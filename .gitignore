@@ -3,6 +3,7 @@
 
 # Swift build artifacts
 .swiftpm/
+.vscode/
 /.build
 /Packages
 DerivedData/
