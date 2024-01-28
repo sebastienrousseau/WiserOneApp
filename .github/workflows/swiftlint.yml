@@ -1,0 +1,31 @@
+name: SwiftLint
+on:
+  pull_request:
+    paths:
+      - '**/*.swift'
+
+jobs:
+  SwiftLint:
+    runs-on: macOS-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set Up Swift
+        run: |
+          SWIFT_URL="https://swift.org/builds/swift-5.5-release/xcode/swift-5.5-RELEASE/swift-5.5-RELEASE-osx.pkg"
+          curl -o swift.pkg $SWIFT_URL
+          sudo installer -pkg swift.pkg -target /
+          export PATH="/usr/bin:$PATH"
+          swift --version
+
+      - name: Install SwiftLint
+        run: |
+          if ! swiftlint --version; then
+            brew install swiftlint
+          fi
+
+      - name: Run SwiftLint
+        run: swiftlint
+

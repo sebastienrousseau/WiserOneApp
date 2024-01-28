@@ -1,0 +1,20 @@
+# macOS system files
+.DS_Store
+
+# Swift build artifacts
+.swiftpm/
+/.build
+/Packages
+DerivedData/
+
+# Xcode user data
+xcuserdata/
+
+# Exclude sensitive information
+.netrc
+
+# Exclude the project file
+*.xcodeproj
+
+# Exclude the entitlements file
+*.entitlements
