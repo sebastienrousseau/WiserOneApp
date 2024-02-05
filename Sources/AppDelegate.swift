@@ -18,16 +18,23 @@
 
 import Cocoa
 
-// Enum for error descriptions
+// MARK: - Error Handling
+
+/// Enum for error descriptions
 enum AppError: Error {
     case statusBarItemButtonNotAvailable
     case popoverSetupFailed(message: String)
     case contentUpdateFailed(message: String)
 }
 
+// MARK: - AppDelegate
+
+/// Main class responsible for initializing the application's status bar item and popover.
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarItem: NSStatusItem?
     var popover: NSPopover?
+
+    // MARK: - Application Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         do {
@@ -38,74 +45,61 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func createCircularAttributedString(for string: String) -> NSAttributedString {
-        let font = NSFont.systemFont(ofSize: 10)
-        let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
-            .foregroundColor: NSColor.textColor
-        ]
+    // MARK: - Setup Methods
 
-        let attributedString = NSAttributedString(string: string, attributes: attributes)
-        let textSize = attributedString.size()
-        let diameter = textSize.height + 10
-
-        let circleSize = CGSize(width: diameter, height: diameter)
-
-        let circleImage = NSImage(size: circleSize)
-        circleImage.lockFocus()
-
-        let borderColor = NSColor.labelColor
-        borderColor.set()
-        let path = NSBezierPath(ovalIn: NSRect(origin: CGPoint.zero, size: circleSize).insetBy(dx: 1, dy: 1))
-        path.lineWidth = 1.0
-        path.stroke()
-
-        let textRect = CGRect(x: (diameter - textSize.width) / 2, y: (diameter - textSize.height) / 2, width: textSize.width, height: textSize.height)
-        attributedString.draw(in: textRect)
-
-        circleImage.unlockFocus()
-
-        let attachment = NSTextAttachment()
-        attachment.image = circleImage
-
-        let attachmentString = NSMutableAttributedString(attributedString: NSAttributedString(attachment: attachment))
-
-        let offset = (font.capHeight - diameter) / 2.0
-        attachmentString.addAttribute(.baselineOffset, value: offset, range: NSRange(location: 0, length: attachmentString.length))
-
-        return attachmentString
-    }
-
+    /// Sets up the status bar item with a circular attributed string representing the current day.
     private func setupStatusBarItem() throws {
         statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-
         guard let button = statusBarItem?.button else {
             throw AppError.statusBarItemButtonNotAvailable
         }
+        configureButton(button)
+    }
 
-        let day = "\(Calendar.current.component(.day, from: Date()))"
-        let attributedTitle = createCircularAttributedString(for: day)
-        button.attributedTitle = attributedTitle
+    /// Configures the button with a circular attributed string.
+    /// - Parameter button: The NSStatusBarButton to configure.
+    private func configureButton(_ button: NSStatusBarButton) {
+        // let day = "\(Calendar.current.component(.day, from: Date()))"
+        button.attributedTitle = createStatusBarIcon()
         button.action = #selector(togglePopover(_:))
     }
 
+    /// Sets up the popover with initial content.
     private func setupPopover() {
         popover = NSPopover()
         updatePopoverContent(with: QuoteViewController())
     }
 
+    // MARK: - Utility Methods
+
+    /// Creates an icon for the status bar item 
+    /// - Parameter string: The string to display in the icon.
+    private func createStatusBarIcon() -> NSAttributedString {
+    let font = NSFont.systemFont(ofSize: 22, weight: .bold) // Your chosen font size
+    let attributes: [NSAttributedString.Key: Any] = [
+        .font: font,
+        .foregroundColor: NSColor.labelColor,
+        .baselineOffset: NSNumber(value: -2) // Adjust this value as needed
+    ]
+    return NSAttributedString(string: "⏣", attributes: attributes)
+}
+
+
+    /// Updates the popover's content with a given view controller.
+    /// - Parameter viewController: The view controller to display in the popover.
     private func updatePopoverContent(with viewController: NSViewController) {
         popover?.contentViewController = viewController
         popover?.contentSize = viewController.view.frame.size
     }
 
+    // MARK: - Popover Display Handling
+
     @objc private func togglePopover(_ sender: Any?) {
-        if let button = statusBarItem?.button {
-            if popover?.isShown == true {
-                closePopover(sender)
-            } else {
-                showPopover(from: button)
-            }
+        guard let button = statusBarItem?.button else { return }
+        if popover?.isShown == true {
+            closePopover(sender)
+        } else {
+            showPopover(from: button)
         }
     }
 
@@ -118,6 +112,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         popover?.performClose(sender)
     }
 
+    // MARK: - Error Handling
+
+    /// Handles errors that occur during application setup and operation.
+    /// - Parameter error: The error to handle.
     private func handleError(_ error: Error) {
         ErrorLogger.shared.logError(error)
 

@@ -19,8 +19,12 @@
 
 import Cocoa
 
+/// Controller to manage the main app window
 class QuoteWindowController: NSWindowController {
+
+    /// Default initializer
     init() {
+
         // Create a temporary content view controller
         let contentViewController = QuoteViewController()
 
@@ -32,15 +36,25 @@ class QuoteWindowController: NSWindowController {
             contentRect: NSRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
-            defer: false)
+            defer: false
+        )
 
+        // Center the window on screen
         window.center()
+
+        // Set window title
         window.title = "Quote of the Day"
+
+        // Set this class as the window delegate
         super.init(window: window)
+
+        // Set the view controller as the content
         window.contentViewController = QuoteViewController()
     }
 
+    /// Required coder initializer (not implemented)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
 }

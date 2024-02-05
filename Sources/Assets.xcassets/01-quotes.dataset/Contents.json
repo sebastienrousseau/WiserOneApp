@@ -1,0 +1,12 @@
+{
+  "data" : [
+    {
+      "filename" : "01-quotes.json",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

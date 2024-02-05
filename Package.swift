@@ -12,7 +12,8 @@ let package = Package(
             resources: [
                 .copy("Assets.xcassets"),
                 .copy("WiserOne.entitlements"),
-                .process("Resources/quotes.json"),
+                .process("Resources/01-quotes.json"),
+                .process("Resources/02-quotes.json"),
                 .process("Resources/logo.svg")
             ]
         )

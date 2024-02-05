@@ -19,6 +19,7 @@
 
 import Cocoa
 
+/// Model to store a quote's information.
 struct Quote: Decodable {
     let quote_text: String
     let author: String
@@ -26,22 +27,29 @@ struct Quote: Decodable {
     let image_url: String
 }
 
+/// Encapsulates quotes array to facilitate JSON decoding.
 struct Quotes: Decodable {
     let quotes: [Quote]
 }
 
+/// Displays quotes in app UI. Designed for macOS, not iOS.
 class QuoteViewController: NSViewController {
+    // Text field to display the quote. It is an implicitly unwrapped optional because its value will be set after the view controller's view is loaded.
     // swiftlint:disable:next implicitly_unwrapped_optional
     var textField: NSTextField!
 
+    // Sets up the view controller's view with necessary UI elements.
     // swiftlint:disable:next function_body_length
     override func loadView() {
+
+        // Defines the dimensions of the view.
         let viewWidth: CGFloat = 300
         let viewHeight: CGFloat = 300
         self.view = NSView(frame: NSRect(x: 0, y: 0, width: viewWidth, height: viewHeight))
         self.view.wantsLayer = true
         self.view.layer?.backgroundColor = nil
 
+        // Configuration for a button to potentially trigger an action (e.g., load a new quote).
         let button = NSButton()
         let bundle: Bundle
 
@@ -51,6 +59,7 @@ class QuoteViewController: NSViewController {
         bundle = Bundle.main
         #endif
 
+        // Attempts to load an image asset for the button.
         let logoImageName = "logo"
         if let logoImage = bundle.image(forResource: NSImage.Name(logoImageName)) {
             button.image = logoImage
@@ -100,18 +109,45 @@ class QuoteViewController: NSViewController {
         loadRandomQuote()
     }
 
+    /// This method is called when the view is about to appear on the screen.
+    /// It calls the `loadRandomQuote()` method to load a random quote.
     override func viewWillAppear() {
         super.viewWillAppear()
         loadRandomQuote()
     }
 
+    /// Handles the button click event.
+    ///
+    /// - Parameter sender: The button that was clicked.
+    /// - Note: This method opens the Wiser One website in the default web browser when the button is clicked.
+    ///
     @objc func buttonClicked(sender: NSButton) {
         if let url = URL(string: "https://wiserone.com") {
             NSWorkspace.shared.open(url)
         }
     }
 
-    func getQuote() -> Quote {
+    /// Function to get the current month as a two-digit string
+    func getCurrentMonth() -> String {
+        let date = Date()
+        let calendar = Calendar.current
+        let month = calendar.component(.month, from: date)
+        return String(format: "%02d", month) // Formats the month to a two-digit string
+    }
+
+    ///
+    /// Retrieves a random quote from a JSON file based on the provided month.
+    ///
+    /// - Parameters:
+    ///     - month: The month for which to retrieve the quote.
+    /// - Returns: A randomly selected `Quote` object.
+    /// - Note: This function dynamically creates the file name based on the `month`
+    /// parameter and attempts to load and parse the corresponding JSON file.
+    /// If successful, it returns a randomly selected quote from the parsed data.
+    /// If the file fails to load or parse, it returns a default "Quote not found"
+    /// object.
+    ///
+    func getQuote(fromMonth month: String) -> Quote {
         let bundle: Bundle
 
         #if SWIFT_PACKAGE
@@ -120,7 +156,8 @@ class QuoteViewController: NSViewController {
         bundle = Bundle.main
         #endif
 
-        let quotesJSONName = "quotes"
+        // Dynamically create the file name based on the month parameter
+        let quotesJSONName = "\(month)-quotes"
 
         if
             let jsonURL = bundle.url(forResource: quotesJSONName, withExtension: "json"),
@@ -132,16 +169,19 @@ class QuoteViewController: NSViewController {
                 date_added: "Date not found",
                 image_url: "Image not found"
             )
-            print("Selected quote: \(selectedQuote.quote_text) by \(selectedQuote.author)")
+            print("Selected quote: \(selectedQuote.quote_text) \(selectedQuote.author)")
             return selectedQuote
         } else {
-            print("Failed to load or parse quotes.json")
-            return Quote(quote_text: "Quote not found", author: "", date_added: "", image_url: "")
+            print("Failed to load or parse \(quotesJSONName).json")
+            return Quote(quote_text: "Quote not found", author: "Author not found", date_added: "Date not found", image_url: "Image not found")
         }
     }
 
+    /// Loads a random quote and displays it in the text field.
+    /// - Note: This method retrieves the current month, gets a quote for that month, and displays the quote in the text field.
     func loadRandomQuote() {
-        let quote = getQuote()
+        let currentMonth = getCurrentMonth()
+        let quote = getQuote(fromMonth: currentMonth)
         textField.stringValue = "\(quote.quote_text)\n\n\(quote.author)"
     }
 }

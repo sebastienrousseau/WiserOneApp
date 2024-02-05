@@ -18,7 +18,16 @@
 
 import Cocoa
 
+/// Gets reference to shared application instance
 let app = NSApplication.shared
+
+/// Creates the application delegate instance
 let delegate = AppDelegate()
+
+/// Sets delegate to receive app events and control app lifecycle
 app.delegate = delegate
+
+/// Runs application by starting the runloop
+/// This call will not return until app terminates
+/// Apps on macOS require a runloop unlike command line tools
 app.run()
