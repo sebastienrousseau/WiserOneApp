@@ -18,9 +18,9 @@
 
 import Cocoa
 
-// MARK: - Error Handling
+// MARK: - Error Definitions
 
-/// Enum for error descriptions
+/// Enumerates possible errors within the application for more precise error handling.
 enum AppError: Error {
     case statusBarItemButtonNotAvailable
     case popoverSetupFailed(message: String)
@@ -29,14 +29,22 @@ enum AppError: Error {
 
 // MARK: - AppDelegate
 
-/// Main class responsible for initializing the application's status bar item and popover.
+/// The main class responsible for initializing and managing the application's status bar item and its associated popover.
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusBarItem: NSStatusItem?
-    var popover: NSPopover?
+
+    // Lazy initialization of popover with default behavior set via property.
+    lazy var popover: NSPopover = {
+        let popover = NSPopover()
+        popover.behavior = .transient
+        return popover
+    }()
 
     // MARK: - Application Lifecycle
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    /// Called when the application has completed its launch setup.
+    /// Initializes the status bar item and configures the popover.
+    func applicationDidFinishLaunching(_: Notification) {
         do {
             try setupStatusBarItem()
             setupPopover()
@@ -45,9 +53,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Setup Methods
+    // MARK: - Status Bar Setup
 
-    /// Sets up the status bar item with a circular attributed string representing the current day.
+    /// Initializes and configures the status bar item.
+    /// - Throws: `AppError.statusBarItemButtonNotAvailable` if unable to access the status bar item button.
     private func setupStatusBarItem() throws {
         statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         guard let button = statusBarItem?.button else {
@@ -56,98 +65,81 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         configureButton(button)
     }
 
-    /// Configures the button with a circular attributed string.
-    /// - Parameter button: The NSStatusBarButton to configure.
+    /// Configures the status bar button with a custom icon and action.
+    /// - Parameter button: The `NSStatusBarButton` to configure.
     private func configureButton(_ button: NSStatusBarButton) {
-        // let day = "\(Calendar.current.component(.day, from: Date()))"
         button.attributedTitle = createStatusBarIcon()
         button.action = #selector(togglePopover(_:))
     }
 
-    // MARK: - Popover Setup
+    // MARK: - Popover Management
 
-    /// Sets up and configures the popover for the application.
-    ///
-    /// This method initializes a new `NSPopover` instance, sets its behavior to transient,
-    /// and updates its content with a `QuoteViewController` instance. A transient popover will
-    /// close automatically when the user interacts with a UI element outside the popover.
-    /// The `QuoteViewController` is intended to manage the content displayed within the popover.
+    /// Prepares the popover for use with application-specific content.
     private func setupPopover() {
-        // Create a new instance of NSPopover and assign it to the popover property.
-        // NSPopover is a class used to manage a popover window.
-        popover = NSPopover()
-
-        if let popover = popover {
-            // Set the behavior of the popover to .transient.
-            // .transient behavior means that the popover will close automatically when the user interacts with a user interface element outside the popover.
-            popover.behavior = .transient
-
-            // Call the updatePopoverContent function, passing in a new instance of QuoteViewController.
-            // This function is presumably designed to configure the content of the popover with the provided view controller.
-            // QuoteViewController() is a custom view controller that you want to display inside the popover.
-            updatePopoverContent(with: QuoteViewController())
-        }
+        updatePopoverContent(with: QuoteViewController())
     }
 
-    // MARK: - Utility Methods
-
-    /// Creates an icon for the status bar item
-    /// - Parameter string: The string to display in the icon.
-    private func createStatusBarIcon() -> NSAttributedString {
-    let font = NSFont.systemFont(ofSize: 22, weight: .bold) // Your chosen font size
-    let attributes: [NSAttributedString.Key: Any] = [
-        .font: font,
-        .foregroundColor: NSColor.labelColor,
-        .baselineOffset: NSNumber(value: -2) // Adjust this value as needed
-    ]
-    return NSAttributedString(string: "⏣", attributes: attributes)
-}
-
-
-    /// Updates the popover's content with a given view controller.
-    /// - Parameter viewController: The view controller to display in the popover.
-    private func updatePopoverContent(with viewController: NSViewController) {
-        popover?.contentViewController = viewController
-        popover?.contentSize = viewController.view.frame.size
+    /// Updates the popover's content with a specific `QuoteViewController`.
+    /// - Parameter viewController: The `QuoteViewController` instance to display within the popover.
+    private func updatePopoverContent(with viewController: QuoteViewController) {
+        popover.contentViewController = viewController
+        popover.contentSize = viewController.view.frame.size
     }
 
     // MARK: - Popover Display Handling
 
+    /// Toggles the popover's visibility based on its current state.
     @objc private func togglePopover(_ sender: Any?) {
         guard let button = statusBarItem?.button else { return }
-        if popover?.isShown == true {
+        if popover.isShown {
             closePopover(sender)
         } else {
             showPopover(from: button)
         }
     }
 
+    /// Displays the popover anchored to the provided view.
+    /// - Parameter view: The `NSView` from which to anchor the popover.
     private func showPopover(from view: NSView) {
-        popover?.show(relativeTo: view.bounds, of: view, preferredEdge: NSRectEdge.minY)
-        popover?.contentViewController?.view.window?.makeKey()
+        popover.show(relativeTo: view.bounds, of: view, preferredEdge: NSRectEdge.minY)
+        popover.contentViewController?.view.window?.makeKey()
     }
 
+    /// Closes the popover.
     private func closePopover(_ sender: Any?) {
-        popover?.performClose(sender)
+        popover.performClose(sender)
+    }
 
+    // MARK: - Utility Methods
+
+    /// Creates a custom icon for the status bar item.
+    /// - Returns: An `NSAttributedString` representing the icon.
+    private func createStatusBarIcon() -> NSAttributedString {
+        let font = NSFont.systemFont(ofSize: 22, weight: .bold)
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .foregroundColor: NSColor.labelColor,
+            .baselineOffset: NSNumber(value: -2),
+        ]
+        return NSAttributedString(string: "⏣", attributes: attributes)
     }
 
     // MARK: - Error Handling
 
-    /// Handles errors that occur during application setup and operation.
+    /// Handles errors that occur during application setup and operation, logging them appropriately.
     /// - Parameter error: The error to handle.
     private func handleError(_ error: Error) {
         ErrorLogger.shared.logError(error)
 
+        // Handle specific errors with user feedback or additional logging as needed.
         switch error {
         case AppError.statusBarItemButtonNotAvailable:
-            print("Status bar item button not available")
-        case let AppError.popoverSetupFailed(message):
-            print("Popover setup failed: \(message)")
-        case let AppError.contentUpdateFailed(message):
-            print("Content update failed: \(message)")
+            print("Error: Status bar item button not available.")
+        case let AppError.popoverSetupFailed(message),
+             let AppError.contentUpdateFailed(message):
+            print("Error: \(message)")
         default:
-            break
+            print("An unknown error occurred.")
         }
     }
 }
