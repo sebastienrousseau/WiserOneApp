@@ -19,19 +19,20 @@
 
 import Cocoa
 
-/// Controller to manage the main app window
-class QuoteWindowController: NSWindowController {
+/// Manages the main application window, displaying dynamic content through a `QuoteViewController`.
+class QuoteWindowController: NSWindowController, NSWindowDelegate {
+    // Provides direct access to the `QuoteViewController`, ensuring type safety and ease of customization.
+    var quoteViewController: QuoteViewController {
+        return window?.contentViewController as! QuoteViewController
+    }
 
-    /// Default initializer
+    /// Initializes a new window with a `QuoteViewController` as its content, dynamically sizing the window and centering it on the screen.
     init() {
+        super.init(window: nil) // Call super with nil and setup the window in the next steps.
 
-        // Create a temporary content view controller
         let contentViewController = QuoteViewController()
-
-        // Calculate the size of the content dynamically based on its subviews
         let contentSize = contentViewController.view.fittingSize
 
-        // Set the contentRect of the window based on the calculated content size
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: contentSize.width, height: contentSize.height),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
@@ -39,22 +40,36 @@ class QuoteWindowController: NSWindowController {
             defer: false
         )
 
-        // Center the window on screen
         window.center()
-
-        // Set window title
         window.title = "Quote of the Day"
+        window.contentViewController = contentViewController
 
-        // Set this class as the window delegate
-        super.init(window: window)
-
-        // Set the view controller as the content
-        window.contentViewController = QuoteViewController()
+        self.window = window // Assign the newly created window to the window property of NSWindowController.
+        window.delegate = self // Set this class as the delegate to handle window events.
     }
 
-    /// Required coder initializer (not implemented)
-    required init?(coder: NSCoder) {
+    @available(*, unavailable)
+    required init?(coder _: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // MARK: NSWindowDelegate Methods
+
+    /// Implement NSWindowDelegate methods here to handle window events, such as closing or resizing, in custom ways if needed.
+    func windowWillClose(_: Notification) {
+        // Custom handling of the window closing event.
+    }
+
+    // Additional NSWindowDelegate methods can be implemented as required.
+
+    // MARK: - Public API Documentation
+
+    /// Initializes the `QuoteWindowController` with a `QuoteViewController` as its content, setting up the window appropriately.
+    /// This approach allows for dynamic view construction similar to SwiftUI, offering flexibility in content management and window behavior.
+    ///
+    /// The window is sized based on the content's requirements and centered on the screen, providing an optimal user experience.
+    ///
+    /// Usage of this class is intended for scenarios where a code-based UI is preferred over storyboards or nibs, aligning with modern SwiftUI practices.
+    ///
+    /// - Note: This class does not support initialization from a storyboard or nib and will throw a fatal error if attempted.
 }
