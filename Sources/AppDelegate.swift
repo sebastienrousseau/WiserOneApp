@@ -64,15 +64,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         button.action = #selector(togglePopover(_:))
     }
 
-    /// Sets up the popover with initial content.
+    // MARK: - Popover Setup
+
+    /// Sets up and configures the popover for the application.
+    ///
+    /// This method initializes a new `NSPopover` instance, sets its behavior to transient,
+    /// and updates its content with a `QuoteViewController` instance. A transient popover will
+    /// close automatically when the user interacts with a UI element outside the popover.
+    /// The `QuoteViewController` is intended to manage the content displayed within the popover.
     private func setupPopover() {
+        // Create a new instance of NSPopover and assign it to the popover property.
+        // NSPopover is a class used to manage a popover window.
         popover = NSPopover()
-        updatePopoverContent(with: QuoteViewController())
+
+        if let popover = popover {
+            // Set the behavior of the popover to .transient.
+            // .transient behavior means that the popover will close automatically when the user interacts with a user interface element outside the popover.
+            popover.behavior = .transient
+
+            // Call the updatePopoverContent function, passing in a new instance of QuoteViewController.
+            // This function is presumably designed to configure the content of the popover with the provided view controller.
+            // QuoteViewController() is a custom view controller that you want to display inside the popover.
+            updatePopoverContent(with: QuoteViewController())
+        }
     }
 
     // MARK: - Utility Methods
 
-    /// Creates an icon for the status bar item 
+    /// Creates an icon for the status bar item
     /// - Parameter string: The string to display in the icon.
     private func createStatusBarIcon() -> NSAttributedString {
     let font = NSFont.systemFont(ofSize: 22, weight: .bold) // Your chosen font size
@@ -110,6 +129,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func closePopover(_ sender: Any?) {
         popover?.performClose(sender)
+
     }
 
     // MARK: - Error Handling
