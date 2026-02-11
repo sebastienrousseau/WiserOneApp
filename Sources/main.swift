@@ -18,6 +18,9 @@
 
 import Cocoa
 
+/// App version
+let appVersion = "0.0.2"
+
 /// Gets reference to shared application instance
 let app = NSApplication.shared
 

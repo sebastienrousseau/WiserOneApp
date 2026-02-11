@@ -6,12 +6,12 @@
       "scale" : "1x"
     },
     {
-      "filename" : "logo 1.svg",
+      "filename" : "logo@2x.svg",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "logo 2.svg",
+      "filename" : "logo@3x.svg",
       "idiom" : "universal",
       "scale" : "3x"
     }

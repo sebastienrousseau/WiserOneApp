@@ -17,5 +17,3 @@ xcuserdata/
 # Exclude the project file
 *.xcodeproj
 
-# Exclude the entitlements file
-*.entitlements
