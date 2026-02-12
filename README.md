@@ -215,9 +215,7 @@ This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-<p align="center">
-  Made with ❤️ by <a href="https://wiserone.com">WiserOne</a><br>
-  Designed by Sebastien Rousseau — Engineered with Euxis
-</p>
+🎨 Designed by **[Sebastien Rousseau](https://sebastienrousseau.com/)**
+🚀 Engineered with **[Euxis](https://euxis.co/)** — Enterprise Unified eXecution Intelligence System
 
 [divider]: https://kura.pro/common/images/elements/divider.svg "divider"
