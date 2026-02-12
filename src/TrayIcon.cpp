@@ -241,7 +241,11 @@ QIcon TrayIcon::createSymbolicIcon() const
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
     renderer->render(&painter, QRectF(0, 0, ICON_SIZE, ICON_SIZE));
 
-    return QIcon(pixmap);
+    QIcon icon(pixmap);
+#ifdef Q_OS_MACOS
+    icon.setIsMask(true);
+#endif
+    return icon;
 }
 
 bool TrayIcon::show()

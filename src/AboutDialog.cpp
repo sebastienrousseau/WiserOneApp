@@ -14,7 +14,9 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScreen>
+#include <QStyleHints>
 #include <QSvgRenderer>
+#include <QShowEvent>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -49,6 +51,15 @@ constexpr const char* LOGO_RESOURCE = ":/logo.svg";
 
 [[nodiscard]] bool isDarkTheme()
 {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    const auto colorScheme = QGuiApplication::styleHints()->colorScheme();
+    if (colorScheme == Qt::ColorScheme::Dark) {
+        return true;
+    }
+    if (colorScheme == Qt::ColorScheme::Light) {
+        return false;
+    }
+#endif
     const QPalette palette = QGuiApplication::palette();
     const QColor windowColor = palette.color(QPalette::Window);
     const QColor textColor = palette.color(QPalette::WindowText);
@@ -69,8 +80,8 @@ constexpr const char* LOGO_RESOURCE = ":/logo.svg";
 
     const QByteArray svgData = svgFile.readAll();
 
-    // Use text color for logo (adapts to theme)
-    const QColor logoColor = QGuiApplication::palette().color(QPalette::WindowText);
+    // Use explicit dark/light detection for reliable macOS support
+    const QColor logoColor = isDarkTheme() ? Qt::white : Qt::black;
     const QByteArray coloredSvg = recolorSvg(svgData, logoColor);
 
     QSvgRenderer renderer(coloredSvg);
@@ -190,4 +201,16 @@ void AboutDialog::setupUI()
     mainLayout->addLayout(buttonLayout);
 
     setLayout(mainLayout);
+}
+
+void AboutDialog::showEvent(QShowEvent* event)
+{
+    QDialog::showEvent(event);
+    updateLogo();
+}
+
+void AboutDialog::updateLogo()
+{
+    m_logoLabel->setPixmap(createThemedLogo(LOGO_SIZE));
+    setWindowIcon(QIcon(createThemedLogo(32)));
 }

@@ -44,8 +44,12 @@ public:
     AboutDialog(const AboutDialog&) = delete;
     AboutDialog& operator=(const AboutDialog&) = delete;
 
+protected:
+    void showEvent(QShowEvent* event) override;
+
 private:
     void setupUI();
+    void updateLogo();
 
     QLabel* m_logoLabel{nullptr};
     QLabel* m_titleLabel{nullptr};
