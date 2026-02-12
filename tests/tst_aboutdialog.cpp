@@ -71,7 +71,7 @@ void TestAboutDialog::cleanup()
 
 void TestAboutDialog::testConstructorWithoutParent()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     QVERIFY(m_dialog != nullptr);
     QCOMPARE(m_dialog->parent(), nullptr);
@@ -81,7 +81,7 @@ void TestAboutDialog::testConstructorWithoutParent()
 void TestAboutDialog::testConstructorWithParent()
 {
     m_parentWidget = new QWidget();
-    m_dialog = std::make_unique<AboutDialog>(m_parentWidget);
+    m_dialog = std::make_unique<AboutDialog>(nullptr, m_parentWidget);
 
     QVERIFY(m_dialog != nullptr);
     QCOMPARE(m_dialog->parent(), m_parentWidget);
@@ -97,15 +97,15 @@ void TestAboutDialog::testNonCopyable()
 
 void TestAboutDialog::testDialogProperties()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     QVERIFY(m_dialog->isWindow());
-    QVERIFY(m_dialog->windowTitle().contains("About", Qt::CaseInsensitive));
+    QVERIFY(m_dialog->windowTitle().contains("Settings", Qt::CaseInsensitive));
 }
 
 void TestAboutDialog::testDialogSize()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     // Check that dialog has reasonable size constraints
     const QSize sizeHint = m_dialog->sizeHint();
@@ -122,7 +122,7 @@ void TestAboutDialog::testDialogSize()
 
 void TestAboutDialog::testChildElements()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     // Find child widgets by their expected names/types
     const auto labels = m_dialog->findChildren<QLabel*>();
@@ -157,7 +157,7 @@ void TestAboutDialog::testChildElements()
 
 void TestAboutDialog::testLogoDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     // Should have a logo label or pixmap
     const auto labels = m_dialog->findChildren<QLabel*>();
@@ -178,7 +178,7 @@ void TestAboutDialog::testLogoDisplay()
 
 void TestAboutDialog::testTitleDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const auto labels = m_dialog->findChildren<QLabel*>();
     bool foundAppName = false;
@@ -198,7 +198,7 @@ void TestAboutDialog::testTitleDisplay()
 
 void TestAboutDialog::testVersionDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const auto labels = m_dialog->findChildren<QLabel*>();
     bool foundVersion = false;
@@ -218,7 +218,7 @@ void TestAboutDialog::testVersionDisplay()
 
 void TestAboutDialog::testDescriptionDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const auto labels = m_dialog->findChildren<QLabel*>();
     bool foundDescription = false;
@@ -235,7 +235,7 @@ void TestAboutDialog::testDescriptionDisplay()
 
 void TestAboutDialog::testCopyrightDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const auto labels = m_dialog->findChildren<QLabel*>();
     bool foundCopyright = false;
@@ -255,7 +255,7 @@ void TestAboutDialog::testCopyrightDisplay()
 
 void TestAboutDialog::testWebsiteDisplay()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const auto labels = m_dialog->findChildren<QLabel*>();
     bool foundWebsite = false;
@@ -275,7 +275,7 @@ void TestAboutDialog::testWebsiteDisplay()
 
 void TestAboutDialog::testShowHide()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     // Initially hidden
     QVERIFY(!m_dialog->isVisible());
@@ -290,7 +290,7 @@ void TestAboutDialog::testShowHide()
 
 void TestAboutDialog::testModal()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     // Note: The dialog becomes modal when exec() is called
     // When used via exec(), Qt automatically handles modality
@@ -302,7 +302,7 @@ void TestAboutDialog::testModal()
 
 void TestAboutDialog::testWindowFlags()
 {
-    m_dialog = std::make_unique<AboutDialog>();
+    m_dialog = std::make_unique<AboutDialog>(nullptr);
 
     const Qt::WindowFlags flags = m_dialog->windowFlags();
 
@@ -317,7 +317,7 @@ void TestAboutDialog::testWindowFlags()
 void TestAboutDialog::testParentChildRelationship()
 {
     m_parentWidget = new QWidget();
-    m_dialog = std::make_unique<AboutDialog>(m_parentWidget);
+    m_dialog = std::make_unique<AboutDialog>(nullptr, m_parentWidget);
 
     QCOMPARE(m_dialog->parent(), m_parentWidget);
     QVERIFY(m_parentWidget->children().contains(m_dialog.get()));
@@ -326,8 +326,8 @@ void TestAboutDialog::testParentChildRelationship()
 void TestAboutDialog::testMultipleInstances()
 {
     // Test creating multiple dialogs doesn't crash
-    auto dialog1 = std::make_unique<AboutDialog>();
-    auto dialog2 = std::make_unique<AboutDialog>();
+    auto dialog1 = std::make_unique<AboutDialog>(nullptr);
+    auto dialog2 = std::make_unique<AboutDialog>(nullptr);
 
     QVERIFY(dialog1 != nullptr);
     QVERIFY(dialog2 != nullptr);
@@ -345,7 +345,7 @@ void TestAboutDialog::testMemoryManagement()
 {
     // Test that dialog can be destroyed safely
     {
-        auto dialog = std::make_unique<AboutDialog>();
+        auto dialog = std::make_unique<AboutDialog>(nullptr);
         dialog->show();
         // Should destroy cleanly when going out of scope
     }
@@ -353,7 +353,7 @@ void TestAboutDialog::testMemoryManagement()
     // Test with parent
     {
         auto parent = std::make_unique<QWidget>();
-        auto dialog = std::make_unique<AboutDialog>(parent.get());
+        auto dialog = std::make_unique<AboutDialog>(nullptr, parent.get());
         dialog->show();
         // Should destroy cleanly
     }

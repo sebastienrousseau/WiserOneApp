@@ -5,18 +5,25 @@
 
 #include "AboutDialog.h"
 #include "ErrorLogger.h"
+#include "NotificationManager.h"
+#include "QuoteScheduler.h"
 
 #include <QApplication>
 #include <QDesktopServices>
+#include <QDialog>
 #include <QEvent>
 #include <QFile>
 #include <QGuiApplication>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QPainter>
+#include <QPushButton>
 #include <QRegularExpression>
 #include <QScreen>
 #include <QStyleHints>
 #include <QSvgRenderer>
 #include <QUrl>
+#include <QVBoxLayout>
 
 #include <string_view>
 
@@ -56,6 +63,12 @@ TrayIcon::TrayIcon(QObject* parent)
 {
     m_trayIcon->setIcon(createSymbolicIcon());
     m_trayIcon->setToolTip(tr("The Wiser One"));
+
+    // Initialize notification system
+    m_notificationManager = std::make_unique<NotificationManager>(m_trayIcon.get());
+    m_quoteScheduler = std::make_unique<QuoteScheduler>(this);
+    connect(m_quoteScheduler.get(), &QuoteScheduler::notificationDue,
+            this, &TrayIcon::sendQuoteNotification);
 
     setupMenu();
     setupConnections();
@@ -117,7 +130,7 @@ void TrayIcon::setupMenu()
     // Settings/About - same icon as Vitals: preferences-system-symbolic
     auto* settingsAction = m_contextMenu->addAction(
         QIcon::fromTheme(QStringLiteral("preferences-system-symbolic")),
-        tr("About"));
+        tr("Settings"));
     connect(settingsAction, &QAction::triggered, this, &TrayIcon::handleSettings);
 
     m_contextMenu->addSeparator();
@@ -136,6 +149,19 @@ void TrayIcon::setupConnections()
 
     connect(m_trayIcon.get(), &QSystemTrayIcon::activated,
             this, &TrayIcon::onTrayActivated);
+
+    connect(m_trayIcon.get(), &QSystemTrayIcon::messageClicked,
+            this, &TrayIcon::handleNotificationClicked);
+
+#ifdef Q_OS_MACOS
+    // On macOS, messageClicked() is unreliable. Detect app activation after notification.
+    connect(qApp, &QApplication::applicationStateChanged,
+            this, [this](Qt::ApplicationState state) {
+                if (state == Qt::ApplicationActive && m_notificationPending) {
+                    handleNotificationClicked();
+                }
+            });
+#endif
 }
 
 bool TrayIcon::isDarkTheme() const noexcept
@@ -305,7 +331,7 @@ void TrayIcon::handleWebsite()
 void TrayIcon::handleSettings()
 {
     if (!m_aboutDialog) {
-        m_aboutDialog = std::make_unique<AboutDialog>();
+        m_aboutDialog = std::make_unique<AboutDialog>(m_quoteScheduler.get());
     }
     m_aboutDialog->exec();
 }
@@ -321,4 +347,75 @@ void TrayIcon::updateQuoteDisplay()
     m_quoteAction->setText(tr("\"%1\"").arg(quote.text));
     m_authorAction->setText(tr("— %1").arg(quote.author));
     emit quoteDisplayed(quote.text, quote.author);
+}
+
+void TrayIcon::sendQuoteNotification()
+{
+    if (!m_notificationManager || !m_notificationManager->isAvailable()) {
+        return;
+    }
+
+    m_lastNotifiedQuote = m_quoteManager->getRandomQuote();
+    m_notificationPending = true;
+    static_cast<void>(m_notificationManager->sendQuoteNotification(
+        tr("The Wiser One"),
+        m_lastNotifiedQuote.text,
+        m_lastNotifiedQuote.author));
+}
+
+void TrayIcon::handleNotificationClicked()
+{
+    if (m_notificationPending) {
+        m_notificationPending = false;
+        showQuotePopup();
+    }
+}
+
+void TrayIcon::showQuotePopup()
+{
+    if (m_lastNotifiedQuote.text.isEmpty()) {
+        return;
+    }
+
+    auto* popup = new QDialog(nullptr, Qt::Dialog | Qt::WindowCloseButtonHint);
+    popup->setAttribute(Qt::WA_DeleteOnClose);
+    popup->setWindowTitle(tr("The Wiser One"));
+    popup->setFixedWidth(360);
+
+    auto* layout = new QVBoxLayout(popup);
+    layout->setSpacing(12);
+    layout->setContentsMargins(24, 24, 24, 24);
+
+    auto* quoteLabel = new QLabel(
+        QStringLiteral("\u201C%1\u201D").arg(m_lastNotifiedQuote.text), popup);
+    QFont quoteFont = QApplication::font();
+    quoteFont.setPointSize(16);
+    quoteFont.setWeight(QFont::DemiBold);
+    quoteLabel->setFont(quoteFont);
+    quoteLabel->setWordWrap(true);
+    quoteLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(quoteLabel);
+
+    auto* authorLabel = new QLabel(
+        QStringLiteral("\u2014 %1").arg(m_lastNotifiedQuote.author), popup);
+    QFont authorFont = QApplication::font();
+    authorFont.setPointSize(13);
+    authorFont.setItalic(true);
+    authorLabel->setFont(authorFont);
+    authorLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(authorLabel);
+
+    layout->addSpacing(8);
+
+    auto* closeButton = new QPushButton(tr("Close"), popup);
+    closeButton->setMinimumWidth(80);
+    connect(closeButton, &QPushButton::clicked, popup, &QDialog::accept);
+    auto* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(closeButton);
+    buttonLayout->addStretch();
+    layout->addLayout(buttonLayout);
+
+    popup->adjustSize();
+    popup->exec();
 }

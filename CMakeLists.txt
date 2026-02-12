@@ -149,6 +149,8 @@ set(SOURCES
     src/QuoteProviderFactory.cpp
     src/ErrorLogger.cpp
     src/AboutDialog.cpp
+    src/NotificationManager.cpp
+    src/QuoteScheduler.cpp
 )
 
 set(HEADERS
@@ -159,7 +161,10 @@ set(HEADERS
     src/QuoteProviderFactory.h
     src/ErrorLogger.h
     src/AboutDialog.h
+    src/NotificationManager.h
+    src/QuoteScheduler.h
     src/interfaces/IQuoteProvider.h
+    src/interfaces/INotificationService.h
 )
 
 # Platform-specific sources

@@ -14,6 +14,8 @@
 #include <memory>
 
 class AboutDialog;
+class NotificationManager;
+class QuoteScheduler;
 class QSvgRenderer;
 
 /**
@@ -101,11 +103,16 @@ private:
     [[nodiscard]] QIcon createSymbolicIcon() const;
     [[nodiscard]] bool isDarkTheme() const noexcept;
     void updateQuoteDisplay();
+    void sendQuoteNotification();
+    void showQuotePopup();
+    void handleNotificationClicked();
 
     std::unique_ptr<QSystemTrayIcon> m_trayIcon;
     std::unique_ptr<QMenu> m_contextMenu;
     std::unique_ptr<QuoteManager> m_quoteManager;
     std::unique_ptr<AboutDialog> m_aboutDialog;
+    std::unique_ptr<NotificationManager> m_notificationManager;
+    std::unique_ptr<QuoteScheduler> m_quoteScheduler;
 
     // Menu actions
     QAction* m_quoteAction{nullptr};
@@ -120,6 +127,10 @@ private:
     mutable QByteArray m_cachedLightSvg;
     mutable std::unique_ptr<QSvgRenderer> m_cachedDarkRenderer;
     mutable std::unique_ptr<QSvgRenderer> m_cachedLightRenderer;
+
+    // Last notified quote for popup display
+    Quote m_lastNotifiedQuote;
+    bool m_notificationPending{false};
 
     static constexpr int ICON_SIZE = 22;
 };

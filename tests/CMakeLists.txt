@@ -67,6 +67,8 @@ add_executable(tst_application
     ${CMAKE_SOURCE_DIR}/src/QuoteManager.cpp
     ${CMAKE_SOURCE_DIR}/src/QuoteProviderFactory.cpp
     ${CMAKE_SOURCE_DIR}/src/AboutDialog.cpp
+    ${CMAKE_SOURCE_DIR}/src/NotificationManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/QuoteScheduler.cpp
     ${TEST_COMMON_SOURCES}
 )
 
@@ -89,6 +91,7 @@ add_test(NAME ApplicationTest COMMAND tst_application)
 add_executable(tst_aboutdialog
     tst_aboutdialog.cpp
     ${CMAKE_SOURCE_DIR}/src/AboutDialog.cpp
+    ${CMAKE_SOURCE_DIR}/src/QuoteScheduler.cpp
 )
 
 target_include_directories(tst_aboutdialog PRIVATE
@@ -115,6 +118,8 @@ add_executable(test_cross_platform
     ${CMAKE_SOURCE_DIR}/src/TrayIcon.cpp
     ${CMAKE_SOURCE_DIR}/src/AboutDialog.cpp
     ${CMAKE_SOURCE_DIR}/src/QuoteProviderFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/NotificationManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/QuoteScheduler.cpp
     ${TEST_COMMON_SOURCES}
 )
 

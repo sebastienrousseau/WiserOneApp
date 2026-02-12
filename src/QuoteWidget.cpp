@@ -376,7 +376,7 @@ void QuoteWidget::openWebsite()
 void QuoteWidget::showAboutDialog()
 {
     if (m_aboutDialog == nullptr) {
-        m_aboutDialog = new AboutDialog(this);
+        m_aboutDialog = new AboutDialog(nullptr, this);
     }
     m_aboutDialog->exec();
 }

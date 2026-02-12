@@ -3,20 +3,26 @@
 
 #include "AboutDialog.h"
 
+#include "QuoteScheduler.h"
+
 #include <QApplication>
+#include <QCheckBox>
 #include <QDesktopServices>
 #include <QFile>
 #include <QFont>
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QListWidget>
 #include <QPainter>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScreen>
+#include <QShowEvent>
 #include <QStyleHints>
 #include <QSvgRenderer>
-#include <QShowEvent>
+#include <QTabWidget>
+#include <QTimeEdit>
 #include <QUrl>
 #include <QVBoxLayout>
 
@@ -106,10 +112,11 @@ constexpr const char* LOGO_RESOURCE = ":/logo.svg";
 
 }  // namespace
 
-AboutDialog::AboutDialog(QWidget* parent)
+AboutDialog::AboutDialog(QuoteScheduler* scheduler, QWidget* parent)
     : QDialog(parent, Qt::Dialog | Qt::WindowCloseButtonHint)
+    , m_scheduler(scheduler)
 {
-    setWindowTitle(tr("About"));
+    setWindowTitle(tr("Settings"));
     setFixedWidth(DIALOG_WIDTH);
     setWindowIcon(QIcon(createThemedLogo(32)));
     setupUI();
@@ -119,70 +126,22 @@ AboutDialog::AboutDialog(QWidget* parent)
 void AboutDialog::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
-    mainLayout->setSpacing(12);
-    mainLayout->setContentsMargins(24, 24, 24, 24);
+    mainLayout->setSpacing(8);
+    mainLayout->setContentsMargins(12, 12, 12, 12);
 
-    // Logo - centered, themed
-    m_logoLabel = new QLabel(this);
-    m_logoLabel->setPixmap(createThemedLogo(LOGO_SIZE));
-    m_logoLabel->setFixedSize(LOGO_SIZE, LOGO_SIZE);
-    m_logoLabel->setAlignment(Qt::AlignCenter);
+    auto* tabWidget = new QTabWidget(this);
 
-    auto* logoLayout = new QHBoxLayout();
-    logoLayout->addStretch();
-    logoLayout->addWidget(m_logoLabel);
-    logoLayout->addStretch();
-    mainLayout->addLayout(logoLayout);
+    // About tab
+    auto* aboutTab = new QWidget();
+    setupAboutTab(aboutTab);
+    tabWidget->addTab(aboutTab, tr("About"));
 
-    mainLayout->addSpacing(8);
+    // Notifications tab
+    auto* notifTab = new QWidget();
+    setupNotificationsTab(notifTab);
+    tabWidget->addTab(notifTab, tr("Notifications"));
 
-    // Title
-    m_titleLabel = new QLabel(QString::fromUtf8(WISERONE_TITLE), this);
-    QFont titleFont = QApplication::font();
-    titleFont.setPointSize(18);
-    titleFont.setWeight(QFont::Bold);
-    m_titleLabel->setFont(titleFont);
-    m_titleLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(m_titleLabel);
-
-    // Version
-    m_versionLabel = new QLabel(tr("Version %1").arg(QString::fromUtf8(WISERONE_VERSION)), this);
-    QFont versionFont = QApplication::font();
-    versionFont.setPointSize(11);
-    m_versionLabel->setFont(versionFont);
-    m_versionLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(m_versionLabel);
-
-    mainLayout->addSpacing(8);
-
-    // Description
-    m_descriptionLabel = new QLabel(QString::fromUtf8(WISERONE_DESCRIPTION), this);
-    m_descriptionLabel->setAlignment(Qt::AlignCenter);
-    m_descriptionLabel->setWordWrap(true);
-    mainLayout->addWidget(m_descriptionLabel);
-
-    mainLayout->addSpacing(12);
-
-    // Website link
-    m_websiteLabel = new QLabel(this);
-    m_websiteLabel->setText(
-        QStringLiteral("<a href=\"%1\" style=\"color: #3584e4;\">%1</a>")
-            .arg(QString::fromUtf8(WISERONE_WEBSITE)));
-    m_websiteLabel->setOpenExternalLinks(true);
-    m_websiteLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(m_websiteLabel);
-
-    mainLayout->addSpacing(8);
-
-    // Copyright
-    m_copyrightLabel = new QLabel(QStringLiteral("\u00A9 %1").arg(QString::fromUtf8(WISERONE_COPYRIGHT)), this);
-    QFont copyrightFont = QApplication::font();
-    copyrightFont.setPointSize(10);
-    m_copyrightLabel->setFont(copyrightFont);
-    m_copyrightLabel->setAlignment(Qt::AlignCenter);
-    mainLayout->addWidget(m_copyrightLabel);
-
-    mainLayout->addSpacing(16);
+    mainLayout->addWidget(tabWidget);
 
     // Close button
     auto* buttonLayout = new QHBoxLayout();
@@ -197,10 +156,141 @@ void AboutDialog::setupUI()
     setLayout(mainLayout);
 }
 
+void AboutDialog::setupAboutTab(QWidget* tab)
+{
+    auto* layout = new QVBoxLayout(tab);
+    layout->setSpacing(12);
+    layout->setContentsMargins(16, 16, 16, 16);
+
+    // Logo - centered, themed
+    m_logoLabel = new QLabel(tab);
+    m_logoLabel->setPixmap(createThemedLogo(LOGO_SIZE));
+    m_logoLabel->setFixedSize(LOGO_SIZE, LOGO_SIZE);
+    m_logoLabel->setAlignment(Qt::AlignCenter);
+
+    auto* logoLayout = new QHBoxLayout();
+    logoLayout->addStretch();
+    logoLayout->addWidget(m_logoLabel);
+    logoLayout->addStretch();
+    layout->addLayout(logoLayout);
+
+    layout->addSpacing(8);
+
+    // Title
+    m_titleLabel = new QLabel(QString::fromUtf8(WISERONE_TITLE), tab);
+    QFont titleFont = QApplication::font();
+    titleFont.setPointSize(18);
+    titleFont.setWeight(QFont::Bold);
+    m_titleLabel->setFont(titleFont);
+    m_titleLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_titleLabel);
+
+    // Version
+    m_versionLabel = new QLabel(tr("Version %1").arg(QString::fromUtf8(WISERONE_VERSION)), tab);
+    QFont versionFont = QApplication::font();
+    versionFont.setPointSize(11);
+    m_versionLabel->setFont(versionFont);
+    m_versionLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_versionLabel);
+
+    layout->addSpacing(8);
+
+    // Description
+    m_descriptionLabel = new QLabel(QString::fromUtf8(WISERONE_DESCRIPTION), tab);
+    m_descriptionLabel->setAlignment(Qt::AlignCenter);
+    m_descriptionLabel->setWordWrap(true);
+    layout->addWidget(m_descriptionLabel);
+
+    layout->addSpacing(12);
+
+    // Website link
+    m_websiteLabel = new QLabel(tab);
+    m_websiteLabel->setText(
+        QStringLiteral("<a href=\"%1\" style=\"color: #3584e4;\">%1</a>")
+            .arg(QString::fromUtf8(WISERONE_WEBSITE)));
+    m_websiteLabel->setOpenExternalLinks(true);
+    m_websiteLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_websiteLabel);
+
+    layout->addSpacing(8);
+
+    // Copyright
+    m_copyrightLabel = new QLabel(QStringLiteral("\u00A9 %1").arg(QString::fromUtf8(WISERONE_COPYRIGHT)), tab);
+    QFont copyrightFont = QApplication::font();
+    copyrightFont.setPointSize(10);
+    m_copyrightLabel->setFont(copyrightFont);
+    m_copyrightLabel->setAlignment(Qt::AlignCenter);
+    layout->addWidget(m_copyrightLabel);
+
+    layout->addStretch();
+}
+
+void AboutDialog::setupNotificationsTab(QWidget* tab)
+{
+    auto* layout = new QVBoxLayout(tab);
+    layout->setSpacing(12);
+    layout->setContentsMargins(16, 16, 16, 16);
+
+    // Enable/disable toggle
+    m_enableCheckbox = new QCheckBox(tr("Enable daily quote notifications"), tab);
+    if (m_scheduler) {
+        m_enableCheckbox->setChecked(m_scheduler->isEnabled());
+    }
+    connect(m_enableCheckbox, &QCheckBox::toggled,
+            this, &AboutDialog::onNotificationsToggled);
+    layout->addWidget(m_enableCheckbox);
+
+    layout->addSpacing(8);
+
+    // Scheduled times label
+    auto* timesLabel = new QLabel(tr("Notification times:"), tab);
+    QFont timesFont = QApplication::font();
+    timesFont.setWeight(QFont::DemiBold);
+    timesLabel->setFont(timesFont);
+    layout->addWidget(timesLabel);
+
+    // Time list
+    m_timeList = new QListWidget(tab);
+    m_timeList->setMaximumHeight(120);
+    layout->addWidget(m_timeList);
+
+    // Add time controls
+    auto* addLayout = new QHBoxLayout();
+    m_timeEdit = new QTimeEdit(QTime(9, 0), tab);
+    m_timeEdit->setDisplayFormat(QStringLiteral("HH:mm"));
+    addLayout->addWidget(m_timeEdit);
+
+    auto* addButton = new QPushButton(tr("Add"), tab);
+    connect(addButton, &QPushButton::clicked, this, &AboutDialog::onAddTime);
+    addLayout->addWidget(addButton);
+
+    auto* removeButton = new QPushButton(tr("Remove"), tab);
+    connect(removeButton, &QPushButton::clicked, this, &AboutDialog::onRemoveTime);
+    addLayout->addWidget(removeButton);
+
+    layout->addLayout(addLayout);
+
+    layout->addStretch();
+
+    // Populate the time list
+    refreshTimeList();
+
+    // Set initial enabled state of controls
+    const bool enabled = m_enableCheckbox->isChecked();
+    m_timeList->setEnabled(enabled);
+    m_timeEdit->setEnabled(enabled);
+}
+
 void AboutDialog::showEvent(QShowEvent* event)
 {
     QDialog::showEvent(event);
     updateLogo();
+
+    // Refresh notification state from scheduler
+    if (m_scheduler && m_enableCheckbox) {
+        m_enableCheckbox->setChecked(m_scheduler->isEnabled());
+        refreshTimeList();
+    }
 }
 
 void AboutDialog::updateLogo()
@@ -209,7 +299,6 @@ void AboutDialog::updateLogo()
     setWindowIcon(QIcon(createThemedLogo(32)));
 
     const bool dark = isDarkTheme();
-    const QColor baseColor = dark ? Qt::white : Qt::black;
     const QColor mutedColor = dark ? QColor(200, 200, 200) : QColor(80, 80, 80);
 
     QPalette versionPal = m_versionLabel->palette();
@@ -219,4 +308,62 @@ void AboutDialog::updateLogo()
     QPalette copyrightPal = m_copyrightLabel->palette();
     copyrightPal.setColor(QPalette::WindowText, mutedColor);
     m_copyrightLabel->setPalette(copyrightPal);
+}
+
+void AboutDialog::onNotificationsToggled(bool enabled)
+{
+    if (m_scheduler) {
+        m_scheduler->setEnabled(enabled);
+    }
+    m_timeList->setEnabled(enabled);
+    m_timeEdit->setEnabled(enabled);
+}
+
+void AboutDialog::onAddTime()
+{
+    if (!m_scheduler) {
+        return;
+    }
+
+    const QTime newTime = m_timeEdit->time();
+    auto times = m_scheduler->scheduledTimes();
+
+    // Don't add duplicates
+    for (const auto& t : times) {
+        if (t == newTime) {
+            return;
+        }
+    }
+
+    times.push_back(newTime);
+    m_scheduler->setScheduledTimes(times);
+    refreshTimeList();
+}
+
+void AboutDialog::onRemoveTime()
+{
+    if (!m_scheduler || !m_timeList->currentItem()) {
+        return;
+    }
+
+    const int row = m_timeList->currentRow();
+    auto times = m_scheduler->scheduledTimes();
+
+    if (row >= 0 && static_cast<size_t>(row) < times.size()) {
+        times.erase(times.begin() + row);
+        m_scheduler->setScheduledTimes(times);
+        refreshTimeList();
+    }
+}
+
+void AboutDialog::refreshTimeList()
+{
+    if (!m_timeList || !m_scheduler) {
+        return;
+    }
+
+    m_timeList->clear();
+    for (const auto& time : m_scheduler->scheduledTimes()) {
+        m_timeList->addItem(time.toString(QStringLiteral("HH:mm")));
+    }
 }

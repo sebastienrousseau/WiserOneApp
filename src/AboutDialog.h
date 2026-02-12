@@ -5,14 +5,21 @@
 #define ABOUTDIALOG_H
 
 #include <QDialog>
+#include <QTime>
 
+#include <vector>
+
+class QCheckBox;
 class QLabel;
+class QListWidget;
+class QuoteScheduler;
+class QTimeEdit;
 
 /**
- * @brief About dialog showing application information
+ * @brief About dialog showing application information and notification settings
  *
  * Displays application logo, name, version, and links.
- * Styled similar to GNOME Vitals extension preferences.
+ * Also provides notification scheduling configuration.
  */
 class AboutDialog : public QDialog {
     Q_OBJECT
@@ -20,25 +27,11 @@ class AboutDialog : public QDialog {
 public:
     /**
      * @brief Construct a new About Dialog
+     * @param scheduler Pointer to the QuoteScheduler for notification settings
      * @param parent Parent widget for modal behavior (optional)
-     *
-     * Creates a modal dialog showing:
-     * - Application logo and name
-     * - Version information
-     * - Copyright and license info
-     * - Website link
-     *
-     * @code{cpp}
-     * auto about = new AboutDialog(this);
-     * about->exec(); // Show modal
-     * about->deleteLater();
-     * @endcode
      */
-    explicit AboutDialog(QWidget* parent = nullptr);
+    explicit AboutDialog(QuoteScheduler* scheduler, QWidget* parent = nullptr);
 
-    /**
-     * @brief Destructor - default cleanup
-     */
     ~AboutDialog() override = default;
 
     AboutDialog(const AboutDialog&) = delete;
@@ -47,10 +40,21 @@ public:
 protected:
     void showEvent(QShowEvent* event) override;
 
+private slots:
+    void onNotificationsToggled(bool enabled);
+    void onAddTime();
+    void onRemoveTime();
+
 private:
     void setupUI();
+    void setupAboutTab(QWidget* tab);
+    void setupNotificationsTab(QWidget* tab);
     void updateLogo();
+    void refreshTimeList();
 
+    QuoteScheduler* m_scheduler;
+
+    // About tab
     QLabel* m_logoLabel{nullptr};
     QLabel* m_titleLabel{nullptr};
     QLabel* m_versionLabel{nullptr};
@@ -58,7 +62,12 @@ private:
     QLabel* m_copyrightLabel{nullptr};
     QLabel* m_websiteLabel{nullptr};
 
-    static constexpr int DIALOG_WIDTH = 320;
+    // Notifications tab
+    QCheckBox* m_enableCheckbox{nullptr};
+    QListWidget* m_timeList{nullptr};
+    QTimeEdit* m_timeEdit{nullptr};
+
+    static constexpr int DIALOG_WIDTH = 380;
     static constexpr int LOGO_SIZE = 80;
 };
 
