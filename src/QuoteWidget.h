@@ -4,7 +4,7 @@
 #ifndef QUOTEWIDGET_H
 #define QUOTEWIDGET_H
 
-#include "IQuoteProvider.h"
+#include "interfaces/IQuoteProvider.h"
 
 #include <memory>
 

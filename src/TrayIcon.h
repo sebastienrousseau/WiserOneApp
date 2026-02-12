@@ -14,6 +14,7 @@
 #include <memory>
 
 class AboutDialog;
+class QSvgRenderer;
 
 /**
  * @brief System tray icon manager for The Wiser One app

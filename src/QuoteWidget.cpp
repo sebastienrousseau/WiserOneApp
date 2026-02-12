@@ -93,6 +93,23 @@ constexpr std::string_view SETTINGS_ICON = ":/icons/settings-symbolic.svg";
 
 QuoteWidget::QuoteWidget(QWidget* parent)
     : QWidget(parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
+    , m_quoteProvider(QuoteProviderFactory::createDefault())
+{
+    setupUI();
+    setupAccessibility();
+    setFocusPolicy(Qt::StrongFocus);
+    setWindowTitle(QStringLiteral("The Wiser One"));
+
+    // Center on screen
+    if (QScreen* screen = QApplication::primaryScreen()) {
+        const QRect screenGeometry = screen->availableGeometry();
+        move(screenGeometry.center() - rect().center());
+    }
+}
+
+QuoteWidget::QuoteWidget(std::unique_ptr<IQuoteProvider> provider, QWidget* parent)
+    : QWidget(parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
+    , m_quoteProvider(std::move(provider))
 {
     setupUI();
     setupAccessibility();
@@ -252,7 +269,7 @@ void QuoteWidget::showWithNewQuote()
 
 void QuoteWidget::updateQuote()
 {
-    const Quote& quote = m_quoteManager.getRandomQuote();
+    const Quote& quote = m_quoteProvider->getRandomQuote();
     m_quoteLabel->setText(QStringLiteral("\"%1\"").arg(quote.text));
     m_authorLabel->setText(quote.author);
 }

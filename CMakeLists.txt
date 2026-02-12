@@ -146,6 +146,7 @@ set(SOURCES
     src/TrayIcon.cpp
     src/QuoteWidget.cpp
     src/QuoteManager.cpp
+    src/QuoteProviderFactory.cpp
     src/ErrorLogger.cpp
     src/AboutDialog.cpp
 )
@@ -155,8 +156,10 @@ set(HEADERS
     src/TrayIcon.h
     src/QuoteWidget.h
     src/QuoteManager.h
+    src/QuoteProviderFactory.h
     src/ErrorLogger.h
     src/AboutDialog.h
+    src/interfaces/IQuoteProvider.h
 )
 
 # Platform-specific sources

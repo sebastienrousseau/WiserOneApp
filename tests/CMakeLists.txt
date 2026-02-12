@@ -1,4 +1,4 @@
-find_package(Qt6 REQUIRED COMPONENTS Test Concurrent Sql Gui Widgets Svg)
+find_package(Qt6 REQUIRED COMPONENTS Test Concurrent Sql Gui Widgets Svg SvgWidgets)
 
 # Code coverage configuration
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
@@ -64,6 +64,9 @@ add_executable(tst_application
     tst_application.cpp
     ${CMAKE_SOURCE_DIR}/src/Application.cpp
     ${CMAKE_SOURCE_DIR}/src/TrayIcon.cpp
+    ${CMAKE_SOURCE_DIR}/src/QuoteManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/QuoteProviderFactory.cpp
+    ${CMAKE_SOURCE_DIR}/src/AboutDialog.cpp
     ${TEST_COMMON_SOURCES}
 )
 
@@ -97,6 +100,8 @@ target_link_libraries(tst_aboutdialog PRIVATE
     Qt6::Test
     Qt6::Gui
     Qt6::Widgets
+    Qt6::Svg
+    Qt6::SvgWidgets
 )
 
 add_test(NAME AboutDialogTest COMMAND tst_aboutdialog)
@@ -123,6 +128,7 @@ target_link_libraries(test_cross_platform PRIVATE
     Qt6::Gui
     Qt6::Widgets
     Qt6::Svg
+    Qt6::SvgWidgets
     Qt6::Sql
     Qt6::Concurrent
 )

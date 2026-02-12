@@ -16,11 +16,11 @@ public:
     explicit MockTrayIcon(QObject* parent = nullptr)
         : TrayIcon(parent)
         , m_shouldShow(true)
-        , m_isAvailableStatic(true)
     {
     }
 
-    bool show() override {
+    // Note: TrayIcon::show() is not virtual, so this shadows it
+    bool showMock() {
         return m_shouldShow;
     }
 
