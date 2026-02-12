@@ -151,9 +151,6 @@ void AboutDialog::setupUI()
     versionFont.setPointSize(11);
     m_versionLabel->setFont(versionFont);
     m_versionLabel->setAlignment(Qt::AlignCenter);
-    QPalette versionPal = m_versionLabel->palette();
-    versionPal.setColor(QPalette::WindowText, versionPal.color(QPalette::WindowText).darker(130));
-    m_versionLabel->setPalette(versionPal);
     mainLayout->addWidget(m_versionLabel);
 
     mainLayout->addSpacing(8);
@@ -183,9 +180,6 @@ void AboutDialog::setupUI()
     copyrightFont.setPointSize(10);
     m_copyrightLabel->setFont(copyrightFont);
     m_copyrightLabel->setAlignment(Qt::AlignCenter);
-    QPalette copyrightPal = m_copyrightLabel->palette();
-    copyrightPal.setColor(QPalette::WindowText, copyrightPal.color(QPalette::WindowText).darker(150));
-    m_copyrightLabel->setPalette(copyrightPal);
     mainLayout->addWidget(m_copyrightLabel);
 
     mainLayout->addSpacing(16);
@@ -213,4 +207,16 @@ void AboutDialog::updateLogo()
 {
     m_logoLabel->setPixmap(createThemedLogo(LOGO_SIZE));
     setWindowIcon(QIcon(createThemedLogo(32)));
+
+    const bool dark = isDarkTheme();
+    const QColor baseColor = dark ? Qt::white : Qt::black;
+    const QColor mutedColor = dark ? QColor(200, 200, 200) : QColor(80, 80, 80);
+
+    QPalette versionPal = m_versionLabel->palette();
+    versionPal.setColor(QPalette::WindowText, mutedColor);
+    m_versionLabel->setPalette(versionPal);
+
+    QPalette copyrightPal = m_copyrightLabel->palette();
+    copyrightPal.setColor(QPalette::WindowText, mutedColor);
+    m_copyrightLabel->setPalette(copyrightPal);
 }
