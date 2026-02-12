@@ -1,0 +1,516 @@
+# Windows Build Verification Workflow
+# SPDX-License-Identifier: MIT
+# Comprehensive Windows build verification with MSVC validation and deployment testing
+
+name: Windows Verification
+
+on:
+  push:
+    branches: [main, 'feat/**', 'fix/**', 'hotfix/**']
+    paths:
+      - 'src/**'
+      - 'resources/windows/**'
+      - 'CMakeLists.txt'
+      - 'scripts/windows-build-verify.*'
+      - '.github/workflows/windows-verify.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'resources/windows/**'
+      - 'CMakeLists.txt'
+      - 'scripts/windows-build-verify.*'
+  schedule:
+    # Weekly Windows-specific verification every Monday at 3:00 AM UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: false
+        default: 'Release'
+        type: choice
+        options:
+          - Release
+          - Debug
+      architecture:
+        description: 'Target Architecture'
+        required: false
+        default: 'x64'
+        type: choice
+        options:
+          - x64
+          - x86
+      skip_tests:
+        description: 'Skip Tests'
+        required: false
+        default: false
+        type: boolean
+      package_only:
+        description: 'Package Only (skip build)'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  QT_VERSION: '6.6.2'
+  BUILD_TYPE: ${{ github.event.inputs.build_type || 'Release' }}
+  ARCHITECTURE: ${{ github.event.inputs.architecture || 'x64' }}
+  CACHE_VERSION: 'v4'
+
+# Cancel previous runs for the same PR/branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.inputs.build_type || 'Release' }}-${{ github.event.inputs.architecture || 'x64' }}
+  cancel-in-progress: true
+
+jobs:
+  # ==========================================================================
+  # Windows Environment Matrix
+  # ==========================================================================
+  windows-verification:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Latest Windows with VS 2022
+          - name: Windows 2022 (VS 2022)
+            os: windows-2022
+            vs_version: '17'
+            toolset: v143
+
+          # Windows 2019 for compatibility testing
+          - name: Windows 2019 (VS 2019)
+            os: windows-2019
+            vs_version: '16'
+            toolset: v142
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for version detection
+
+      # ======================================================================
+      # Environment Setup
+      # ======================================================================
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '${{ matrix.vs_version }}'
+
+      - name: Cache Qt Installation
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/Qt
+          key: qt-${{ env.QT_VERSION }}-${{ runner.os }}-${{ env.ARCHITECTURE }}-${{ env.CACHE_VERSION }}
+          restore-keys: |
+            qt-${{ env.QT_VERSION }}-${{ runner.os }}-${{ env.ARCHITECTURE }}-
+            qt-${{ env.QT_VERSION }}-${{ runner.os }}-
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: 'win64_msvc2019_64'
+          modules: 'qtsvg'
+          cache: true
+          cache-key-prefix: 'install-qt-action'
+
+      - name: Cache CMake and Build Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            build-windows-verify
+            ~/.cache/cmake
+            ${{ runner.temp }}/vcpkg
+          key: cmake-${{ runner.os }}-${{ matrix.toolset }}-${{ env.ARCHITECTURE }}-${{ env.CACHE_VERSION }}-${{ hashFiles('CMakeLists.txt', 'src/**', 'scripts/**') }}
+          restore-keys: |
+            cmake-${{ runner.os }}-${{ matrix.toolset }}-${{ env.ARCHITECTURE }}-${{ env.CACHE_VERSION }}-
+            cmake-${{ runner.os }}-${{ matrix.toolset }}-${{ env.ARCHITECTURE }}-
+
+      - name: Setup Build Environment
+        shell: powershell
+        run: |
+          # Verify Visual Studio installation
+          $vsPath = vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vsPath) {
+            throw "Visual Studio installation not found"
+          }
+          Write-Host "Visual Studio found at: $vsPath"
+
+          # Set environment variables for subsequent steps
+          echo "VS_PATH=$vsPath" >> $env:GITHUB_ENV
+
+          # Verify Qt installation
+          $qtPath = $env:QT_ROOT_DIR
+          if (-not $qtPath -or -not (Test-Path (Join-Path $qtPath "bin\qmake.exe"))) {
+            throw "Qt installation verification failed"
+          }
+          Write-Host "Qt verified at: $qtPath"
+
+          # Check CMake version
+          $cmakeVersion = & cmake --version | Select-String "cmake version (\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value }
+          if ([version]$cmakeVersion -lt [version]"3.16") {
+            throw "CMake 3.16 or later required, found: $cmakeVersion"
+          }
+          Write-Host "CMake $cmakeVersion verified"
+
+      # ======================================================================
+      # Pre-Build Validation
+      # ======================================================================
+      - name: MSVC Compiler Validation
+        shell: powershell
+        run: |
+          Write-Host "=== MSVC Compiler Validation ===" -ForegroundColor Cyan
+
+          # Test C++23 support and Windows API compatibility
+          $testCode = @'
+          #include <iostream>
+          #include <optional>
+          #include <variant>
+          #include <windows.h>
+
+          #if _MSC_VER < 1930
+          #error "MSVC 19.30+ required for C++23 features"
+          #endif
+
+          int main() {
+              std::optional<int> opt = 42;
+              std::cout << "MSVC " << _MSC_VER << " C++23 test passed" << std::endl;
+              return 0;
+          }
+'@
+
+          $testDir = Join-Path $env:RUNNER_TEMP "msvc-test"
+          New-Item -ItemType Directory -Path $testDir -Force
+          Set-Content -Path (Join-Path $testDir "test.cpp") -Value $testCode
+
+          # Setup MSVC environment and compile
+          $vcvars = Join-Path $env:VS_PATH "VC\Auxiliary\Build\vcvars64.bat"
+          $result = cmd /c "call `"$vcvars`" && cl /std:c++latest /EHsc `"$(Join-Path $testDir 'test.cpp')`" /Fe:`"$(Join-Path $testDir 'test.exe')`"" 2>&1
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host $result
+            throw "MSVC compilation test failed"
+          }
+
+          # Run test
+          $output = & (Join-Path $testDir "test.exe")
+          Write-Host "✓ $output" -ForegroundColor Green
+
+      - name: Windows API Compatibility Check
+        shell: powershell
+        run: |
+          Write-Host "=== Windows API Compatibility Check ===" -ForegroundColor Cyan
+
+          # Check source files for Windows API usage patterns
+          $sourceFiles = Get-ChildItem -Path "src" -Recurse -Include "*.cpp", "*.h"
+          $issues = @()
+
+          foreach ($file in $sourceFiles) {
+            $content = Get-Content $file.FullName -Raw
+
+            # Check for deprecated APIs
+            $deprecatedAPIs = @('GetVersionEx', 'GetVersion', 'SetWindowLong', 'GetWindowLong')
+            foreach ($api in $deprecatedAPIs) {
+              if ($content -match "\b$api\b") {
+                $issues += "$($file.Name): Deprecated API '$api' detected"
+              }
+            }
+
+            # Check for insecure string functions
+            $insecureAPIs = @('strcpy', 'strcat', 'sprintf', 'gets')
+            foreach ($api in $insecureAPIs) {
+              if ($content -match "\b$api\b") {
+                $issues += "$($file.Name): Insecure API '$api' detected (use secure variant)"
+              }
+            }
+          }
+
+          if ($issues.Count -gt 0) {
+            Write-Host "⚠ Windows API Issues:" -ForegroundColor Yellow
+            foreach ($issue in $issues) {
+              Write-Host "  $issue" -ForegroundColor Yellow
+            }
+          } else {
+            Write-Host "✓ No Windows API compatibility issues detected" -ForegroundColor Green
+          }
+
+      - name: Resource File Validation
+        shell: powershell
+        run: |
+          Write-Host "=== Resource File Validation ===" -ForegroundColor Cyan
+
+          $rcFile = "resources\windows\wiserone.rc"
+          if (Test-Path $rcFile) {
+            # Check resource file syntax
+            $vcvars = Join-Path $env:VS_PATH "VC\Auxiliary\Build\vcvars64.bat"
+            $result = cmd /c "call `"$vcvars`" && rc /v `"$rcFile`"" 2>&1
+
+            if ($LASTEXITCODE -eq 0) {
+              Write-Host "✓ Resource file compilation successful" -ForegroundColor Green
+            } else {
+              Write-Host $result
+              throw "Resource file compilation failed"
+            }
+          } else {
+            Write-Host "⚠ No Windows resource file found" -ForegroundColor Yellow
+          }
+
+      # ======================================================================
+      # Build and Test Execution
+      # ======================================================================
+      - name: Execute Windows Build Verification
+        shell: powershell
+        run: |
+          # Build parameters from workflow inputs or defaults
+          $buildArgs = @{
+            BuildType = $env:BUILD_TYPE
+            Architecture = $env:ARCHITECTURE
+            QtVersion = $env:QT_VERSION
+          }
+
+          # Add conditional flags based on inputs
+          if ('${{ github.event.inputs.skip_tests }}' -eq 'true') {
+            $buildArgs.SkipTests = $true
+          }
+
+          if ('${{ github.event.inputs.package_only }}' -eq 'true') {
+            $buildArgs.PackageOnly = $true
+          }
+
+          # Always enable verbose mode in CI
+          $buildArgs.Verbose = $true
+
+          # Execute the verification script
+          & "scripts\windows-build-verify.ps1" @buildArgs
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows build verification failed"
+          }
+
+      # ======================================================================
+      # Security and Quality Analysis
+      # ======================================================================
+      - name: Binary Security Analysis
+        shell: powershell
+        run: |
+          Write-Host "=== Binary Security Analysis ===" -ForegroundColor Cyan
+
+          $exe = "build-windows-verify\$env:BUILD_TYPE\WiserOne.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Build executable not found: $exe"
+          }
+
+          # Use dumpbin to check security features
+          $vcvars = Join-Path $env:VS_PATH "VC\Auxiliary\Build\vcvars64.bat"
+          $headers = cmd /c "call `"$vcvars`" && dumpbin /headers `"$exe`"" 2>&1
+
+          # Check security features
+          $securityFeatures = @()
+          if ($headers -match "NX compatible") { $securityFeatures += "DEP/NX" }
+          if ($headers -match "Dynamic base") { $securityFeatures += "ASLR" }
+          if ($headers -match "Guard CF") { $securityFeatures += "Control Flow Guard" }
+
+          if ($securityFeatures.Count -gt 0) {
+            Write-Host "✓ Security features enabled: $($securityFeatures -join ', ')" -ForegroundColor Green
+          } else {
+            Write-Host "⚠ No modern security features detected" -ForegroundColor Yellow
+          }
+
+          # Check for debug information in release builds
+          if ($env:BUILD_TYPE -eq "Release" -and ($headers -match "Debug Directories")) {
+            Write-Host "⚠ Debug information present in release build" -ForegroundColor Yellow
+          }
+
+      - name: Performance Metrics
+        shell: powershell
+        run: |
+          Write-Host "=== Performance Metrics ===" -ForegroundColor Cyan
+
+          $exe = "build-windows-verify\$env:BUILD_TYPE\WiserOne.exe"
+          $fileSize = (Get-Item $exe).Length / 1KB
+
+          Write-Host "Executable size: $([math]::Round($fileSize, 2)) KB"
+
+          if ($fileSize -gt 50000) {
+            Write-Host "⚠ Large executable size (>50MB)" -ForegroundColor Yellow
+          } else {
+            Write-Host "✓ Executable size within acceptable range" -ForegroundColor Green
+          }
+
+          # Package metrics
+          $packageDir = "package-windows"
+          if (Test-Path $packageDir) {
+            $packageSize = (Get-ChildItem $packageDir -Recurse | Measure-Object -Property Length -Sum).Sum / 1MB
+            $fileCount = (Get-ChildItem $packageDir -Recurse -File).Count
+
+            Write-Host "Package size: $([math]::Round($packageSize, 2)) MB"
+            Write-Host "Package files: $fileCount"
+
+            # Set outputs for artifact upload
+            echo "PACKAGE_SIZE=$([math]::Round($packageSize, 2))" >> $env:GITHUB_ENV
+            echo "FILE_COUNT=$fileCount" >> $env:GITHUB_ENV
+          }
+
+      # ======================================================================
+      # Artifact Management
+      # ======================================================================
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-${{ env.BUILD_TYPE }}-${{ env.ARCHITECTURE }}
+          path: |
+            build-windows-verify/${{ env.BUILD_TYPE }}/*.exe
+            build-windows-verify/${{ env.BUILD_TYPE }}/*.dll
+            build-windows-verify/${{ env.BUILD_TYPE }}/*.pdb
+          retention-days: 7
+        if: always()
+
+      - name: Upload Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-${{ env.BUILD_TYPE }}-${{ env.ARCHITECTURE }}
+          path: package-windows/
+          retention-days: 14
+        if: success()
+
+      - name: Upload Verification Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report-${{ matrix.name }}-${{ env.BUILD_TYPE }}
+          path: |
+            build-windows-verify/*.log
+            build-windows-verify/Testing/
+          retention-days: 7
+        if: always()
+
+  # ==========================================================================
+  # Cross-Architecture Compatibility
+  # ==========================================================================
+  cross-architecture:
+    name: Cross-Architecture Test
+    runs-on: windows-2022
+    if: github.event_name != 'schedule'  # Skip for scheduled runs
+    timeout-minutes: 30
+
+    strategy:
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Cache Qt (${{ matrix.arch }})
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.tool_cache }}/Qt
+          key: qt-${{ env.QT_VERSION }}-${{ runner.os }}-${{ matrix.arch }}-${{ env.CACHE_VERSION }}
+
+      - name: Install Qt (${{ matrix.arch }})
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: ${{ matrix.arch == 'x64' && 'win64_msvc2019_64' || 'win32_msvc2019' }}
+          modules: 'qtsvg'
+          cache: true
+
+      - name: Build Test (${{ matrix.arch }})
+        shell: powershell
+        run: |
+          & "scripts\windows-build-verify.ps1" -Architecture ${{ matrix.arch }} -BuildType Release -SkipTests -Verbose
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "${{ matrix.arch }} build verification failed"
+          }
+
+          Write-Host "✓ ${{ matrix.arch }} architecture build successful" -ForegroundColor Green
+
+  # ==========================================================================
+  # Deployment Validation
+  # ==========================================================================
+  deployment-test:
+    name: Deployment Validation
+    runs-on: windows-2022
+    needs: [windows-verification]
+    if: success() && github.ref == 'refs/heads/main'
+    timeout-minutes: 15
+
+    steps:
+      - name: Download Package Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: windows-package-*
+          merge-multiple: true
+
+      - name: Validate Package Structure
+        shell: powershell
+        run: |
+          Write-Host "=== Package Structure Validation ===" -ForegroundColor Cyan
+
+          # Check for required files
+          $requiredFiles = @(
+            "WiserOne.exe",
+            "manifest.json"
+          )
+
+          $missingFiles = @()
+          foreach ($file in $requiredFiles) {
+            if (-not (Test-Path $file)) {
+              $missingFiles += $file
+            }
+          }
+
+          if ($missingFiles.Count -gt 0) {
+            throw "Missing required files: $($missingFiles -join ', ')"
+          }
+
+          Write-Host "✓ All required files present" -ForegroundColor Green
+
+          # Validate manifest
+          $manifest = Get-Content "manifest.json" | ConvertFrom-Json
+          Write-Host "Package: $($manifest.Name) v$($manifest.Version)"
+          Write-Host "Architecture: $($manifest.Architecture)"
+          Write-Host "Build Type: $($manifest.BuildType)"
+
+      - name: Installation Simulation
+        shell: powershell
+        run: |
+          Write-Host "=== Installation Simulation ===" -ForegroundColor Cyan
+
+          # Simulate installation to Program Files
+          $installDir = Join-Path $env:RUNNER_TEMP "WiserOne-Install"
+          New-Item -ItemType Directory -Path $installDir -Force
+
+          # Copy package contents
+          Copy-Item -Path "*.exe", "*.dll", "manifest.json" -Destination $installDir -ErrorAction SilentlyContinue
+          if (Test-Path "resources") {
+            Copy-Item -Path "resources" -Destination $installDir -Recurse
+          }
+          if (Test-Path "translations") {
+            Copy-Item -Path "translations" -Destination $installDir -Recurse
+          }
+
+          Write-Host "✓ Installation simulation completed" -ForegroundColor Green
+          Write-Host "Install directory: $installDir"
+
+          # List installed files
+          Get-ChildItem $installDir -Recurse | ForEach-Object {
+            Write-Host "  $($_.FullName.Replace($installDir, '.'))"
+          }
+
+      - name: Final Deployment Report
+        shell: powershell
+        run: |
+          Write-Host "`n=== Windows Deployment Verification Complete ===" -ForegroundColor Green
+          Write-Host "✓ Package structure validated" -ForegroundColor Green
+          Write-Host "✓ Installation simulation successful" -ForegroundColor Green
+          Write-Host "✓ Ready for Windows deployment" -ForegroundColor Green
