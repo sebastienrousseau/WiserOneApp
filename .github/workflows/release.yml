@@ -1,0 +1,169 @@
+# SPDX-License-Identifier: MIT
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  QT_VERSION: '6.6.2'
+  BUILD_TYPE: Release
+
+jobs:
+  # ==========================================================================
+  # Create Release
+  # ==========================================================================
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: The Wiser One v${{ steps.version.outputs.version }}
+          body: |
+            ## What's New
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+
+            ## Downloads
+
+            | Platform | File |
+            |----------|------|
+            | Linux | `wiserone-linux-x64.tar.gz` |
+            | macOS | `wiserone-macos-x64.dmg` |
+            | Windows | `wiserone-windows-x64.zip` |
+
+            ## Installation
+
+            See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md) for installation instructions.
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+
+  # ==========================================================================
+  # Linux Release
+  # ==========================================================================
+  linux:
+    name: Linux Release
+    needs: create-release
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtsvg'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build --parallel $(nproc)
+
+      - name: Package
+        run: |
+          mkdir -p package/usr/bin
+          mkdir -p package/usr/share/applications
+          mkdir -p package/usr/share/icons/hicolor/256x256/apps
+          cp build/wiserone package/usr/bin/
+          cp resources/linux/com.wiserone.WiserOne.desktop package/usr/share/applications/
+          cp resources/icons/icon-256.png package/usr/share/icons/hicolor/256x256/apps/com.wiserone.WiserOne.png
+          cd package && tar -czvf ../wiserone-linux-x64.tar.gz *
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: wiserone-linux-x64.tar.gz
+
+  # ==========================================================================
+  # macOS Release
+  # ==========================================================================
+  macos:
+    name: macOS Release
+    needs: create-release
+    runs-on: macos-13
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtsvg'
+          cache: true
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake --build build --parallel $(sysctl -n hw.ncpu)
+
+      - name: Create DMG
+        run: |
+          cd build
+          macdeployqt WiserOne.app -dmg
+          mv WiserOne.dmg wiserone-macos-x64.dmg
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/wiserone-macos-x64.dmg
+
+  # ==========================================================================
+  # Windows Release
+  # ==========================================================================
+  windows:
+    name: Windows Release
+    needs: create-release
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtsvg'
+          cache: true
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      - name: Deploy
+        run: |
+          mkdir dist
+          copy build\Release\WiserOne.exe dist\
+          windeployqt dist\WiserOne.exe --release --no-translations
+          Compress-Archive -Path dist\* -DestinationPath wiserone-windows-x64.zip
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: wiserone-windows-x64.zip

@@ -1,0 +1,15 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/">
+        <file>logo.svg</file>
+        <file>icons/icon-16.png</file>
+        <file>icons/icon-32.png</file>
+        <file>icons/icon-128.png</file>
+        <file>icons/icon-256.png</file>
+        <file>icons/icon-512.png</file>
+        <file>icons/icon-symbolic.svg</file>
+        <file>icons/refresh-symbolic.svg</file>
+        <file>icons/web-symbolic.svg</file>
+        <file>icons/settings-symbolic.svg</file>
+    </qresource>
+</RCC>

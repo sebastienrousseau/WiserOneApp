@@ -1,81 +1,215 @@
-# Contributing to `wiserone`
+# Contributing to The Wiser One
 
-Welcome! We're thrilled that you're interested in contributing to the
-`wiserone` library. Whether you're looking to evangelize, submit feedback,
-or contribute code, we appreciate your involvement in making `wiserone` a
-better tool for everyone. Here's how you can get started.
-
-## Evangelize
-
-One of the simplest ways to help us out is by spreading the word about
-wiserone. We believe that a bigger, more involved community makes for a
-better framework, and that better frameworks make the world a better
-place. If you know people who might benefit from using wiserone, please
-let them know!
+Welcome! We're thrilled that you're interested in contributing to The Wiser One.
 
 ## How to Contribute
 
-If you're interested in making a more direct contribution, there are
-several ways you can help us improve wiserone. Here are some guidelines
-for submitting feedback, bug reports, and code contributions.
+### Feedback & Bug Reports
 
-### Feedback
-
-Your feedback is incredibly valuable to us, and we're always looking for
-ways to make wiserone better. If you have ideas, suggestions, or questions
-about wiserone, we'd love to hear them. Here's how you can provide
-feedback:
-
-- Click [here][2] to submit a new feedback.
-- Use a descriptive title that clearly summarizes your feedback.
-- Provide a detailed description of the issue or suggestion.
-- Be patient while we review and respond to your feedback.
-
-### Bug Reports
-
-If you encounter a bug while using wiserone, please let us know so we can
-fix it. Here's how you can submit a bug report:
-
-- Click [here][2] to submit a new issue.
-- Use a descriptive title that clearly summarizes the bug.
-- Provide a detailed description of the issue, including steps to
-  reproduce it.
-- Be patient while we review and respond to your bug report.
+- Submit issues at [GitHub Issues][issues]
+- Use descriptive titles that clearly summarize the issue
+- Provide detailed descriptions and steps to reproduce bugs
 
 ### Code Contributions
 
-If you're interested in contributing code to wiserone, we're excited to
-have your help! Here's what you need to know:
+1. Fork the repository
+2. Clone: `git clone https://github.com/sebastienrousseau/WiserOneApp`
+3. Create a feature branch: `git checkout -b feat/your-feature`
+4. Make your changes in the `src/` folder
+5. Run tests: `ctest --output-on-failure`
+6. Submit a pull request
 
-#### Feature Requests
+---
 
-If you have an idea for a new feature or improvement, we'd love to hear
-it. Here's how you can contribute code for a new feature to wiserone:
+## Coding Standards
 
-- Fork the repo.
-- Clone the wiserone[1] repo by running:
-  `git clone https://github.com/sebastienrousseau/WiserOneApp`
-- Edit files in the `Sources/` folder. The `Sources/` folder contains the source
-  code for wiserone.
-- Submit a pull request, and we'll review and merge your changes if they
-  fit with our vision for wiserone.
+### Language Standard
 
-#### Submitting Code
+- **C++23** is required (GCC 13+, Clang 17+, MSVC 19.36+)
+- Use modern C++ features: `std::expected`, `std::optional`, `constexpr`, ranges
+- Enable warnings: `-Wall -Wextra -Wpedantic`
 
-If you've identified a bug or have a specific code improvement in mind,
-we welcome your pull requests. Here's how to submit your code changes:
+### Code Style
 
-- Fork the repo.
-- Clone the wiserone repo by running:
-  `git clone https://github.com/sebastienrousseau/WiserOneApp`
-- Edit files in the `Sources/` folder. The `Sources/` folder contains the source
-  code for wiserone.
-- Submit a pull request, and we'll review and merge your changes if they
-  fit with our vision for wiserone.
+#### Formatting
 
-We hope that this guide has been helpful in explaining how you can
-contribute to wiserone. Thank you for your interest and involvement in our
-project!
+Run `clang-format` before committing (configuration in `.clang-format`):
+```bash
+clang-format -i src/*.cpp src/*.h
+```
 
-[1]: https://github.com/sebastienrousseau/WiserOneApp
-[2]: https://github.com/sebastienrousseau/WiserOneApp/issues/new
+- Line length: 100 characters maximum
+- Indentation: 4 spaces (no tabs)
+- Braces: K&R style for control statements, Allman for functions/classes
+
+#### Naming Conventions
+
+| Element | Convention | Example |
+|---------|------------|---------|
+| Classes/Structs | PascalCase | `QuoteManager` |
+| Functions/Methods | camelCase | `getRandomQuote()` |
+| Variables | camelCase | `quoteText` |
+| Member Variables | m_ prefix | `m_quotes` |
+| Constants | UPPER_CASE | `ICON_SIZE` |
+| Enums | PascalCase | `QuoteError::FileNotFound` |
+| Namespaces | lowercase | `wiserone::utils` |
+
+#### Include Order
+
+```cpp
+// SPDX-License-Identifier: MIT
+
+#include "QuoteManager.h"  // 1. Corresponding header
+
+#include "ErrorLogger.h"   // 2. Project headers
+
+#include <QString>         // 3. Qt headers
+#include <QVector>
+
+#include <expected>        // 4. Standard library
+#include <string_view>
+```
+
+### Documentation
+
+#### File Headers
+
+Every source file must have an SPDX license identifier:
+```cpp
+// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2024-2026 WiserOne
+```
+
+#### Doxygen Comments
+
+Use Doxygen for public APIs:
+```cpp
+/**
+ * @brief Get a random quote from the collection
+ * @return Reference to a randomly selected Quote
+ */
+[[nodiscard]] const Quote& getRandomQuote();
+```
+
+### Error Handling
+
+#### Use `std::expected` for Recoverable Errors
+
+```cpp
+[[nodiscard]] std::expected<Quote, QuoteError> tryGetQuote();
+```
+
+#### Avoid Exceptions
+
+Use `std::expected` or `std::optional` instead of throwing exceptions.
+
+### Modern C++ Guidelines
+
+#### Prefer
+
+- `std::string_view` over `const char*`
+- `std::expected` over error codes
+- `constexpr` for compile-time computation
+- `[[nodiscard]]` for important return values
+- `noexcept` for functions that cannot fail
+- Smart pointers over raw pointers
+- Range-based for loops
+
+#### Avoid
+
+- Raw `new`/`delete`
+- C-style casts
+- Macros (use `constexpr`)
+- Global mutable state
+- `using namespace` in headers
+
+### Qt-Specific Guidelines
+
+#### String Handling
+
+```cpp
+// Good
+auto str = QStringLiteral("Hello");
+auto view = QStringView(u"World");
+
+// Avoid
+auto str = QString("Hello");  // Runtime conversion
+```
+
+#### Memory Management
+
+- Qt widgets: parent-child ownership
+- Non-widget objects: `std::unique_ptr`
+
+#### Signals and Slots
+
+```cpp
+// Good - compile-time checked
+connect(sender, &Sender::signal, receiver, &Receiver::slot);
+
+// Avoid - runtime string lookup
+connect(sender, SIGNAL(signal()), receiver, SLOT(slot()));
+```
+
+### Testing
+
+- Use Qt Test framework
+- Test file naming: `tst_<classname>.cpp`
+- Aim for >80% code coverage
+
+```cpp
+void TestClass::testMethod()
+{
+    // Arrange
+    auto input = createInput();
+
+    // Act
+    auto result = obj.method(input);
+
+    // Assert
+    QCOMPARE(result, expected);
+}
+```
+
+### Git Workflow
+
+#### Commit Messages
+
+Follow [Conventional Commits][commits]:
+```
+feat(quotes): add monthly rotation
+fix(tray): resolve icon visibility on dark theme
+refactor(logger): use std::expected for error handling
+docs: update contributing guidelines
+test: add QuoteManager unit tests
+```
+
+#### Branch Naming
+
+- `feat/description` - new features
+- `fix/description` - bug fixes
+- `refactor/description` - code improvements
+
+### Building
+
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_PREFIX_PATH=/path/to/Qt6
+cmake --build . -j$(nproc)
+ctest --output-on-failure
+```
+
+### Static Analysis
+
+```bash
+# Format check
+clang-format --dry-run -Werror src/*.cpp src/*.h
+
+# Lint
+clang-tidy src/*.cpp -- -std=c++23 $(pkg-config --cflags Qt6Core Qt6Widgets)
+```
+
+---
+
+[issues]: https://github.com/sebastienrousseau/WiserOneApp/issues
+[commits]: https://www.conventionalcommits.org/

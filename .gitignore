@@ -1,19 +1,74 @@
 # macOS system files
 .DS_Store
 
-# Swift build artifacts
-.swiftpm/
-.vscode/
-/.build
-/Packages
-DerivedData/
+# Build directories
+build/
+cmake-build-*/
+out/
 
-# Xcode user data
-xcuserdata/
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.cmake
+!CMakeLists.txt
+
+# CMake-generated Makefiles in build dirs (but keep root development Makefile)
+build*/Makefile
+!/Makefile
+
+# Qt generated files
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# Compiled Object files
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.a
+*.lib
+
+# Executables
+WiserOne
+wiserone
+WiserOne.exe
+WiserOne.app/
+
+# Distribution
+dist/
+*.tar.gz
+*.dmg
+*.zip
+*.AppImage
+
+# Compile commands
+compile_commands.json
+
+# IDE files
+.vscode/
+.idea/
+*.user
+*.creator
+*.creator.user
+*.swp
+*~
+
+# Qt Creator files
+*.pro.user*
+*.qbs.user*
+
+# Test results
+Testing/
 
 # Exclude sensitive information
 .netrc
-
-# Exclude the project file
-*.xcodeproj
-

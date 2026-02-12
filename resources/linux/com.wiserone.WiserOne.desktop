@@ -1,0 +1,14 @@
+[Desktop Entry]
+Version=1.1
+Type=Application
+Name=The Wiser One
+GenericName=Quote Display
+Comment=Display inspirational quotes in your system tray
+Exec=wiserone
+Icon=com.wiserone.WiserOne
+Categories=Utility;
+Keywords=quotes;wisdom;inspiration;tray;
+StartupNotify=false
+Terminal=false
+X-GNOME-UsesNotifications=true
+X-GNOME-Autostart-enabled=false
