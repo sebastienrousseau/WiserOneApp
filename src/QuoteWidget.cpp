@@ -94,6 +94,7 @@ QuoteWidget::QuoteWidget(QWidget* parent)
     : QWidget(parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
 {
     setupUI();
+    setupAccessibility();
     setFocusPolicy(Qt::StrongFocus);
     setWindowTitle(QStringLiteral("The Wiser One"));
 
@@ -211,7 +212,7 @@ QPushButton* QuoteWidget::createActionButton(const QString& iconPath, const QStr
     button->setIconSize(QSize(BUTTON_ICON_SIZE, BUTTON_ICON_SIZE));
     button->setToolTip(tooltip);
     button->setCursor(Qt::PointingHandCursor);
-    button->setFocusPolicy(Qt::NoFocus);
+    button->setFocusPolicy(Qt::TabFocus);
 
     // Circular button style like Vitals
     button->setStyleSheet(QStringLiteral(
@@ -360,4 +361,48 @@ void QuoteWidget::showAboutDialog()
         m_aboutDialog = new AboutDialog(this);
     }
     m_aboutDialog->exec();
+}
+
+void QuoteWidget::setupAccessibility()
+{
+    // Set accessibility properties for the main widget
+    setAccessibleName(tr("The Wiser One Quote Widget"));
+    setAccessibleDescription(tr("Displays inspirational quotes with refresh, website, and settings buttons"));
+
+    // Set accessibility properties for quote display elements
+    if (m_quoteLabel) {
+        m_quoteLabel->setAccessibleName(tr("Quote Text"));
+        m_quoteLabel->setAccessibleDescription(tr("Current inspirational quote"));
+    }
+
+    if (m_authorLabel) {
+        m_authorLabel->setAccessibleName(tr("Quote Author"));
+        m_authorLabel->setAccessibleDescription(tr("Author of the current quote"));
+    }
+
+    // Set accessibility properties for buttons with proper roles
+    if (m_refreshButton) {
+        m_refreshButton->setAccessibleName(tr("Refresh Quote"));
+        m_refreshButton->setAccessibleDescription(tr("Get a new random quote"));
+        m_refreshButton->setFocusPolicy(Qt::TabFocus);
+    }
+
+    if (m_webButton) {
+        m_webButton->setAccessibleName(tr("Visit Website"));
+        m_webButton->setAccessibleDescription(tr("Open WiserOne website in default browser"));
+        m_webButton->setFocusPolicy(Qt::TabFocus);
+    }
+
+    if (m_settingsButton) {
+        m_settingsButton->setAccessibleName(tr("About"));
+        m_settingsButton->setAccessibleDescription(tr("Show about dialog with application information"));
+        m_settingsButton->setFocusPolicy(Qt::TabFocus);
+    }
+
+    // Set accessible role for the logo area
+    if (m_logoWidget) {
+        m_logoWidget->setAccessibleName(tr("WiserOne Logo"));
+        m_logoWidget->setAccessibleDescription(tr("WiserOne application logo, click to visit website"));
+        m_logoWidget->setFocusPolicy(Qt::TabFocus);
+    }
 }

@@ -113,6 +113,13 @@ private:
     bool m_lastKnownDarkMode{false};
     std::unique_ptr<QTimer> m_themeCheckTimer;
 
+    // SVG icon caching for performance
+    mutable QByteArray m_cachedSvgData;
+    mutable QByteArray m_cachedDarkSvg;
+    mutable QByteArray m_cachedLightSvg;
+    mutable std::unique_ptr<QSvgRenderer> m_cachedDarkRenderer;
+    mutable std::unique_ptr<QSvgRenderer> m_cachedLightRenderer;
+
     static constexpr int ICON_SIZE = 22;
 };
 

@@ -11,6 +11,7 @@
 #include <expected>
 #include <functional>
 #include <optional>
+#include <vector>
 
 /**
  * @brief Represents a single quote with metadata
@@ -114,6 +115,10 @@ private:
     Quote m_fallbackQuote;
     mutable std::int64_t m_lastId{0};
     mutable std::int64_t m_cachedCount{-1};
+
+    // Performance optimization: cache quote IDs for fast random access
+    mutable std::vector<std::int64_t> m_cachedIds;
+    mutable bool m_idsLoaded{false};
 };
 
 #endif  // QUOTEMANAGER_H

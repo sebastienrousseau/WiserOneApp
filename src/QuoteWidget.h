@@ -6,6 +6,7 @@
 
 #include "QuoteManager.h"
 
+#include <QAccessible>
 #include <QLabel>
 #include <QPushButton>
 #include <QSvgWidget>
@@ -60,6 +61,7 @@ protected:
 private:
     void setupUI();
     void setupButtonBar(QVBoxLayout* mainLayout);
+    void setupAccessibility();
     [[nodiscard]] QPushButton* createActionButton(const QString& iconPath, const QString& tooltip);
     void updateQuote();
     void openWebsite();

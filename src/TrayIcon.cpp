@@ -12,7 +12,6 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QPainter>
-#include <QProcess>
 #include <QRegularExpression>
 #include <QScreen>
 #include <QStyleHints>
@@ -141,26 +140,19 @@ void TrayIcon::setupConnections()
 
 bool TrayIcon::isDarkTheme() const noexcept
 {
-#ifdef Q_OS_LINUX
-    // Check GNOME/freedesktop color scheme setting
-    QProcess process;
-    process.start(QStringLiteral("gsettings"),
-                  {QStringLiteral("get"),
-                   QStringLiteral("org.gnome.desktop.interface"),
-                   QStringLiteral("color-scheme")});
-    if (process.waitForFinished(100)) {
-        const QString output = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
-        if (output.contains(QStringLiteral("dark"), Qt::CaseInsensitive)) {
-            return true;
-        }
-        if (output.contains(QStringLiteral("light"), Qt::CaseInsensitive) ||
-            output.contains(QStringLiteral("default"), Qt::CaseInsensitive)) {
-            return false;
-        }
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    // Use Qt6.5+ native theme detection
+    const auto colorScheme = QGuiApplication::styleHints()->colorScheme();
+    if (colorScheme == Qt::ColorScheme::Dark) {
+        return true;
     }
+    if (colorScheme == Qt::ColorScheme::Light) {
+        return false;
+    }
+    // colorScheme == Qt::ColorScheme::Unknown, fall through to palette analysis
 #endif
 
-    // Fallback: check Qt palette
+    // Fallback: check Qt palette for older Qt versions or when scheme is unknown
     const QPalette palette = QGuiApplication::palette();
     const QColor windowColor = palette.color(QPalette::Window);
     const QColor textColor = palette.color(QPalette::WindowText);
@@ -196,22 +188,40 @@ bool TrayIcon::isDarkThemeStatic()
 
 QIcon TrayIcon::createSymbolicIcon() const
 {
-    QFile svgFile(toQString(ICON_RESOURCE));
-    if (!svgFile.open(QIODevice::ReadOnly)) {
-        ErrorLogger::instance().log(
-            QStringLiteral("TrayIcon.cpp"),
-            QStringLiteral("createSymbolicIcon"),
-            QStringLiteral("Failed to open SVG icon file"));
-        return {};
+    // Load SVG data once and cache it
+    if (m_cachedSvgData.isEmpty()) {
+        QFile svgFile(toQString(ICON_RESOURCE));
+        if (!svgFile.open(QIODevice::ReadOnly)) {
+            ErrorLogger::instance().log(
+                QStringLiteral("TrayIcon.cpp"),
+                QStringLiteral("createSymbolicIcon"),
+                QStringLiteral("Failed to open SVG icon file"));
+            return {};
+        }
+        m_cachedSvgData = svgFile.readAll();
     }
 
-    const QByteArray svgData = svgFile.readAll();
-    // Dark theme = white icon, Light theme = black icon
-    const QColor iconColor = m_lastKnownDarkMode ? Qt::white : Qt::black;
-    const QByteArray coloredSvg = recolorSvg(svgData, iconColor);
+    // Use cached renderer for the appropriate theme
+    QSvgRenderer* renderer = nullptr;
+    if (m_lastKnownDarkMode) {
+        if (!m_cachedDarkRenderer) {
+            if (m_cachedDarkSvg.isEmpty()) {
+                m_cachedDarkSvg = recolorSvg(m_cachedSvgData, Qt::white);
+            }
+            m_cachedDarkRenderer = std::make_unique<QSvgRenderer>(m_cachedDarkSvg);
+        }
+        renderer = m_cachedDarkRenderer.get();
+    } else {
+        if (!m_cachedLightRenderer) {
+            if (m_cachedLightSvg.isEmpty()) {
+                m_cachedLightSvg = recolorSvg(m_cachedSvgData, Qt::black);
+            }
+            m_cachedLightRenderer = std::make_unique<QSvgRenderer>(m_cachedLightSvg);
+        }
+        renderer = m_cachedLightRenderer.get();
+    }
 
-    QSvgRenderer renderer(coloredSvg);
-    if (!renderer.isValid()) {
+    if (!renderer || !renderer->isValid()) {
         ErrorLogger::instance().log(
             QStringLiteral("TrayIcon.cpp"),
             QStringLiteral("createSymbolicIcon"),
@@ -229,7 +239,7 @@ QIcon TrayIcon::createSymbolicIcon() const
     QPainter painter(&pixmap);
     painter.setRenderHint(QPainter::Antialiasing);
     painter.setRenderHint(QPainter::SmoothPixmapTransform);
-    renderer.render(&painter, QRectF(0, 0, ICON_SIZE, ICON_SIZE));
+    renderer->render(&painter, QRectF(0, 0, ICON_SIZE, ICON_SIZE));
 
     return QIcon(pixmap);
 }

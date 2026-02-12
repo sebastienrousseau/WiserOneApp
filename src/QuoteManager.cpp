@@ -268,7 +268,8 @@ bool QuoteManager::seedInitialQuotes()
         }
     }
 
-    m_cachedCount = -1;  // Invalidate cache
+    m_cachedCount = -1;  // Invalidate count cache
+    m_idsLoaded = false;  // Invalidate ID cache
     return m_database.commit();
 }
 
@@ -298,35 +299,36 @@ std::int64_t QuoteManager::getRandomId() const
         return 0;
     }
 
-    // Get min and max IDs for efficient random selection
-    QSqlQuery query(m_database);
-    if (!query.exec(QStringLiteral("SELECT MIN(id), MAX(id) FROM quotes")) || !query.next()) {
+    // Load IDs into cache if not already done
+    if (!m_idsLoaded) {
+        m_cachedIds.clear();
+        QSqlQuery query(m_database);
+        if (query.exec(QStringLiteral("SELECT id FROM quotes ORDER BY id"))) {
+            while (query.next()) {
+                m_cachedIds.push_back(query.value(0).toLongLong());
+            }
+        }
+        m_idsLoaded = true;
+    }
+
+    if (m_cachedIds.empty()) {
         return 0;
     }
 
-    const auto minId = query.value(0).toLongLong();
-    const auto maxId = query.value(1).toLongLong();
-
-    // Generate random ID, avoiding the last one shown
-    std::int64_t randomId = 0;
+    // Fast O(1) random selection from cached IDs
     const int maxAttempts = 10;
-
     for (int attempt = 0; attempt < maxAttempts; ++attempt) {
-        randomId = minId + QRandomGenerator::global()->bounded(static_cast<quint32>(maxId - minId + 1));
+        const auto randomIndex = QRandomGenerator::global()->bounded(static_cast<quint32>(m_cachedIds.size()));
+        const auto randomId = m_cachedIds[randomIndex];
 
-        // Verify the ID exists (handles gaps from deletions)
-        query.prepare(QStringLiteral("SELECT id FROM quotes WHERE id >= ? LIMIT 1"));
-        query.addBindValue(static_cast<qlonglong>(randomId));
-
-        if (query.exec() && query.next()) {
-            randomId = query.value(0).toLongLong();
-            if (randomId != m_lastId || count == 1) {
-                return randomId;
-            }
+        if (randomId != m_lastId || m_cachedIds.size() == 1) {
+            return randomId;
         }
     }
 
-    return randomId;
+    // Fallback: return any ID (better than none)
+    const auto randomIndex = QRandomGenerator::global()->bounded(static_cast<quint32>(m_cachedIds.size()));
+    return m_cachedIds[randomIndex];
 }
 
 std::optional<Quote> QuoteManager::fetchQuoteById(std::int64_t id) const
@@ -375,11 +377,29 @@ QuoteManager::QuoteResult QuoteManager::tryGetRandomQuote()
 
 QuoteManager::QuoteResult QuoteManager::getRandomQuoteByCategory(const QString& category)
 {
+    // First get count for this category
+    QSqlQuery countQuery(m_database);
+    countQuery.prepare(QStringLiteral("SELECT COUNT(*) FROM quotes WHERE category = ?"));
+    countQuery.addBindValue(category);
+
+    if (!countQuery.exec() || !countQuery.next()) {
+        return std::unexpected(QuoteError::DatabaseError);
+    }
+
+    const auto count = countQuery.value(0).toLongLong();
+    if (count == 0) {
+        return std::unexpected(QuoteError::EmptyCollection);
+    }
+
+    // Use OFFSET with random index instead of ORDER BY RANDOM()
+    const auto randomOffset = QRandomGenerator::global()->bounded(static_cast<quint32>(count));
+
     QSqlQuery query(m_database);
     query.prepare(QStringLiteral(
         "SELECT id, text, author, category FROM quotes "
-        "WHERE category = ? ORDER BY RANDOM() LIMIT 1"));
+        "WHERE category = ? LIMIT 1 OFFSET ?"));
     query.addBindValue(category);
+    query.addBindValue(static_cast<qlonglong>(randomOffset));
 
     if (query.exec() && query.next()) {
         return Quote{
@@ -390,7 +410,7 @@ QuoteManager::QuoteResult QuoteManager::getRandomQuoteByCategory(const QString& 
         };
     }
 
-    return std::unexpected(QuoteError::EmptyCollection);
+    return std::unexpected(QuoteError::DatabaseError);
 }
 
 QStringList QuoteManager::categories() const

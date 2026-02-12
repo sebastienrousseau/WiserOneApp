@@ -37,48 +37,96 @@ public:
     {
         // Save original stderr
         m_originalStderr = dup(STDERR_FILENO);
+        if (m_originalStderr == -1) {
+            return; // Cannot proceed without backup of stderr
+        }
 
         // Create pipe for capturing
-        if (pipe(m_pipe.data()) == 0) {
-            // Redirect stderr to pipe
-            dup2(m_pipe[1], STDERR_FILENO);
-            close(m_pipe[1]);
-            m_active = true;
+        if (pipe(m_pipe.data()) != 0) {
+            // Cleanup original stderr on pipe failure
+            close(m_originalStderr);
+            m_originalStderr = -1;
+            return;
         }
+
+        // Redirect stderr to pipe
+        if (dup2(m_pipe[1], STDERR_FILENO) == -1) {
+            // Cleanup on dup2 failure
+            close(m_pipe[0]);
+            close(m_pipe[1]);
+            close(m_originalStderr);
+            m_originalStderr = -1;
+            m_pipe[0] = m_pipe[1] = -1;
+            return;
+        }
+
+        close(m_pipe[1]);
+        m_pipe[1] = -1; // Mark as closed
+        m_active = true;
     }
 
-    ~StderrFilter()
+    ~StderrFilter() noexcept
     {
-        if (!m_active) return;
-
-        // Restore original stderr
-        fflush(stderr);
-        dup2(m_originalStderr, STDERR_FILENO);
-        close(m_originalStderr);
-
-        // Read captured content and filter
-        std::array<char, 4096> buffer{};
-        ssize_t bytesRead = 0;
-
-        // Make read non-blocking
-        fcntl(m_pipe[0], F_SETFL, O_NONBLOCK);
-
-        while ((bytesRead = read(m_pipe[0], buffer.data(), buffer.size() - 1)) > 0) {
-            buffer[static_cast<size_t>(bytesRead)] = '\0';
-
-            // Filter out GTK theme warnings
-            if (std::strstr(buffer.data(), "Theme parsing error") == nullptr &&
-                std::strstr(buffer.data(), "Gtk-WARNING") == nullptr) {
-                // Write non-GTK messages to stderr
-                [[maybe_unused]] auto _ = write(STDERR_FILENO, buffer.data(),
-                                                 static_cast<size_t>(bytesRead));
-            }
+        try {
+            cleanup();
+        } catch (...) {
+            // Swallow exceptions in destructor to prevent std::terminate
         }
-
-        close(m_pipe[0]);
     }
 
 private:
+    void cleanup() noexcept
+    {
+        if (!m_active && m_originalStderr == -1) {
+            return; // Nothing to clean up
+        }
+
+        if (m_active) {
+            // Restore original stderr
+            fflush(stderr);
+            if (m_originalStderr != -1) {
+                dup2(m_originalStderr, STDERR_FILENO);
+            }
+
+            // Read captured content and filter
+            if (m_pipe[0] != -1) {
+                std::array<char, 4096> buffer{};
+                ssize_t bytesRead = 0;
+
+                // Make read non-blocking
+                fcntl(m_pipe[0], F_SETFL, O_NONBLOCK);
+
+                while ((bytesRead = read(m_pipe[0], buffer.data(), buffer.size() - 1)) > 0) {
+                    buffer[static_cast<size_t>(bytesRead)] = '\0';
+
+                    // Filter out GTK theme warnings
+                    if (std::strstr(buffer.data(), "Theme parsing error") == nullptr &&
+                        std::strstr(buffer.data(), "Gtk-WARNING") == nullptr) {
+                        // Write non-GTK messages to stderr
+                        [[maybe_unused]] auto _ = write(STDERR_FILENO, buffer.data(),
+                                                         static_cast<size_t>(bytesRead));
+                    }
+                }
+            }
+        }
+
+        // Always cleanup file descriptors, even on partial initialization
+        if (m_originalStderr != -1) {
+            close(m_originalStderr);
+            m_originalStderr = -1;
+        }
+        if (m_pipe[0] != -1) {
+            close(m_pipe[0]);
+            m_pipe[0] = -1;
+        }
+        if (m_pipe[1] != -1) {
+            close(m_pipe[1]);
+            m_pipe[1] = -1;
+        }
+
+        m_active = false;
+    }
+
     int m_originalStderr{-1};
     std::array<int, 2> m_pipe{-1, -1};
     bool m_active{false};
