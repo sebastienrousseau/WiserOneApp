@@ -4,7 +4,9 @@
 #ifndef QUOTEWIDGET_H
 #define QUOTEWIDGET_H
 
-#include "QuoteManager.h"
+#include "IQuoteProvider.h"
+
+#include <memory>
 
 #include <QAccessible>
 #include <QLabel>
@@ -26,10 +28,17 @@ class QuoteWidget : public QWidget {
 
 public:
     /**
-     * @brief Construct a new QuoteWidget
+     * @brief Construct a new QuoteWidget with default quote provider
      * @param parent Parent widget
      */
     explicit QuoteWidget(QWidget* parent = nullptr);
+
+    /**
+     * @brief Construct a new QuoteWidget with custom quote provider
+     * @param provider Quote provider instance
+     * @param parent Parent widget
+     */
+    explicit QuoteWidget(std::unique_ptr<IQuoteProvider> provider, QWidget* parent = nullptr);
     ~QuoteWidget() override;
 
     // Non-copyable (QWidget)
@@ -77,7 +86,7 @@ private:
     QPushButton* m_webButton{nullptr};
     QPushButton* m_settingsButton{nullptr};
     AboutDialog* m_aboutDialog{nullptr};
-    QuoteManager m_quoteManager;
+    std::unique_ptr<IQuoteProvider> m_quoteProvider;
 
     static constexpr int WINDOW_WIDTH = 300;
     static constexpr int WINDOW_HEIGHT = 340;

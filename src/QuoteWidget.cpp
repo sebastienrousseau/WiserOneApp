@@ -5,6 +5,7 @@
 
 #include "AboutDialog.h"
 #include "ErrorLogger.h"
+#include "QuoteProviderFactory.h"
 
 #include <QApplication>
 #include <QDesktopServices>
