@@ -50,6 +50,11 @@ dist/
 *.dmg
 *.zip
 *.AppImage
+packaging/appimage/AppDir/
+packaging/flatpak/build/
+packaging/flatpak/repo/
+packaging/flatpak/src/
+.flatpak-builder/
 
 # Compile commands
 compile_commands.json
@@ -69,6 +74,11 @@ compile_commands.json
 
 # Test results
 Testing/
+
+# Debian packaging artifacts
+debian/debhelper-build-stamp
+debian/files
+debian/*.substvars
 
 # Exclude sensitive information
 .netrc

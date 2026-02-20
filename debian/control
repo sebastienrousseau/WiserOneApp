@@ -1,0 +1,16 @@
+Source: wiserone
+Section: utils
+Priority: optional
+Maintainer: WiserOne Team <dev@wiserone.com>
+Build-Depends: debhelper-compat (= 13), cmake, qt6-base-dev, qt6-declarative-dev, qt6-svg-dev, qt6-tools-dev, qt6-base-dev-tools, pkg-config
+Standards-Version: 4.6.2
+Homepage: https://wiserone.com
+Rules-Requires-Root: no
+
+Package: wiserone
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: The Wiser One - daily quotes in your system tray
+ A minimalist, distraction-free system tray companion that surfaces
+ curated daily quotes and reflections. Designed for focus, consistency,
+ and fast, native-feeling interactions across modern Linux desktops.

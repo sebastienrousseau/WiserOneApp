@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Nothing yet
+
 ### Changed
 
 - Updated copyright year to 2024-2026
@@ -17,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Swift configuration files (.swiftlint.yml, Package.swift)
 - SwiftLint CI workflow
 
-## [0.0.2] - 2026-02-11
+## [0.0.2] - 2026-02-20
 
 ### Added
 
@@ -30,7 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dark/light mode automatic detection and adaptation
 - Desktop launcher integration for Linux (freedesktop)
 - AppStream metadata for Linux software centers
+- Linux packaging assets (AppImage, Flatpak, DEB) and release bundle outputs
 - Comprehensive unit tests with Qt Test framework
+- Coverage and documentation quality gates
 - CI/CD pipeline with GitHub Actions
 - SPDX license headers on all source files
 
@@ -40,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu item "New Quote" renamed to "Refresh"
 - Tray icon changed to magic rune symbol
 - Build system changed from Swift Package Manager to CMake
+- Settings and quote popup styling aligned with modern Qt6 design guidance
 
 ### Technical
 
@@ -48,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modern C++ patterns: smart pointers, RAII, constexpr
 - Static analysis with clang-tidy
 - Code formatting with clang-format
+- UI integration testing via headless display
 
 ## [0.0.1] - 2024-01-01
 

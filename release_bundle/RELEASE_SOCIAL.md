@@ -1,0 +1,1 @@
+The Wiser One 0.0.2 is out (2026‑02‑20): a calm, consistent Qt6 tray experience with polished popups, theme‑aware UI, and production‑ready Linux packages. AppImage, Flatpak, and DEB available now. Checksums included.

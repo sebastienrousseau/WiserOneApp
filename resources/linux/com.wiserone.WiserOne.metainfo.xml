@@ -22,7 +22,9 @@
   </description>
   <launchable type="desktop-id">com.wiserone.WiserOne.desktop</launchable>
   <url type="homepage">https://wiserone.com</url>
-  <developer_name>WiserOne</developer_name>
+  <developer id="com.wiserone">
+    <name>WiserOne</name>
+  </developer>
   <provides>
     <binary>wiserone</binary>
   </provides>
@@ -38,7 +40,7 @@
   </keywords>
   <content_rating type="oars-1.1" />
   <releases>
-    <release version="0.0.2" date="2024-01-01">
+    <release version="0.0.2" date="2026-02-20">
       <description>
         <p>Cross-platform Qt6 release with internationalization support.</p>
       </description>
