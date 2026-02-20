@@ -1,0 +1,5 @@
+wiserone (0.0.2-1) unstable; urgency=medium
+
+  * Initial Debian packaging.
+
+ -- WiserOne Team <dev@wiserone.com>  Fri, 20 Feb 2026 18:30:00 +0000

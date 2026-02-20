@@ -1,0 +1,20 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/translations">
+        <file>wiserone_en.qm</file>
+        <file>wiserone_fr.qm</file>
+        <file>wiserone_es.qm</file>
+        <file>wiserone_de.qm</file>
+        <file>wiserone_pt.qm</file>
+        <file>wiserone_zh_CN.qm</file>
+        <file>wiserone_ja.qm</file>
+        <file>wiserone_ko.qm</file>
+        <file>wiserone_ru.qm</file>
+        <file>wiserone_it.qm</file>
+        <file>wiserone_ar.qm</file>
+        <file>wiserone_he.qm</file>
+        <file>wiserone_hi.qm</file>
+        <file>wiserone_nl.qm</file>
+        <file>wiserone_id.qm</file>
+    </qresource>
+</RCC>

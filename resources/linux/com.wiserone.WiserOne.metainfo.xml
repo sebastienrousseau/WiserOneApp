@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.wiserone.WiserOne</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>The Wiser One</name>
+  <summary>Display inspirational quotes in your system tray</summary>
+  <description>
+    <p>
+      The Wiser One is a lightweight system tray application that displays
+      inspirational quotes throughout your day. Click the tray icon to see
+      a new quote, visit the website, or quit the application.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Curated collection of inspirational quotes</li>
+      <li>Monthly rotating quote collections</li>
+      <li>Minimal system resources</li>
+      <li>Supports light and dark themes</li>
+      <li>Available in 15 languages</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.wiserone.WiserOne.desktop</launchable>
+  <url type="homepage">https://wiserone.com</url>
+  <developer id="com.wiserone">
+    <name>WiserOne</name>
+  </developer>
+  <provides>
+    <binary>wiserone</binary>
+  </provides>
+  <categories>
+    <category>Utility</category>
+  </categories>
+  <keywords>
+    <keyword>quotes</keyword>
+    <keyword>wisdom</keyword>
+    <keyword>inspiration</keyword>
+    <keyword>tray</keyword>
+    <keyword>motivational</keyword>
+  </keywords>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="0.0.2" date="2026-02-20">
+      <description>
+        <p>Cross-platform Qt6 release with internationalization support.</p>
+      </description>
+    </release>
+  </releases>
+</component>

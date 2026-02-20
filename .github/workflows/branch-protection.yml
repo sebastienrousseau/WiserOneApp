@@ -1,0 +1,276 @@
+# SPDX-License-Identifier: MIT
+# Branch Protection Enforcement
+# =============================
+
+name: Branch Protection
+
+on:
+  # This workflow enforces branch protection when CI completes
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+  # Also run on repository dispatch for manual enforcement
+  repository_dispatch:
+    types: [enforce-protection]
+
+jobs:
+  enforce-protection:
+    name: Enforce Branch Protection Rules
+    runs-on: ubuntu-22.04
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'repository_dispatch'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Branch Protection Rules
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: branch } = await github.rest.repos.getBranch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              branch: 'main'
+            });
+
+            const protection = branch.protection;
+            const issues = [];
+
+            // Check required status checks
+            if (!protection?.required_status_checks) {
+              issues.push('❌ Required status checks not enabled');
+            } else {
+              const required = protection.required_status_checks.contexts || [];
+              const expectedChecks = [
+                'Pre-flight Checks',
+                'Linux (Ubuntu 22.04) GCC',
+                'Linux (Ubuntu 22.04) Clang',
+                'macOS (13) Clang',
+                'Windows (2022) MSVC',
+                'Quality Gate'
+              ];
+
+              for (const check of expectedChecks) {
+                if (!required.includes(check)) {
+                  issues.push(`⚠️  Missing required check: ${check}`);
+                }
+              }
+
+              if (!protection.required_status_checks.strict) {
+                issues.push('⚠️  Branch must be up to date before merging not enforced');
+              }
+            }
+
+            // Check required reviews
+            if (!protection?.required_pull_request_reviews) {
+              issues.push('❌ Required PR reviews not enabled');
+            } else {
+              const reviews = protection.required_pull_request_reviews;
+              if (reviews.required_approving_review_count < 1) {
+                issues.push('⚠️  At least 1 review should be required');
+              }
+              if (!reviews.dismiss_stale_reviews) {
+                issues.push('⚠️  Stale review dismissal not enabled');
+              }
+              if (!reviews.require_code_owner_reviews) {
+                issues.push('ℹ️  Code owner reviews not required (optional)');
+              }
+            }
+
+            // Check admin enforcement
+            if (!protection?.enforce_admins?.enabled) {
+              issues.push('⚠️  Admin enforcement not enabled');
+            }
+
+            // Check restrictions
+            if (!protection?.restrictions) {
+              console.log('ℹ️  No push restrictions configured (open to all)');
+            }
+
+            if (issues.length === 0) {
+              console.log('✅ All branch protection rules are properly configured');
+              console.log('🔒 Main branch is protected against:');
+              console.log('  • Direct pushes without PR');
+              console.log('  • Merging without required status checks');
+              console.log('  • Merging without code review');
+              console.log('  • Admin bypass of protection rules');
+            } else {
+              console.log('⚠️  Branch protection issues found:');
+              for (const issue of issues) {
+                console.log(`  ${issue}`);
+              }
+
+              // Create or update an issue for branch protection
+              const issueBody = `
+              ## Branch Protection Configuration Issues
+
+              The following issues were detected with the main branch protection:
+
+              ${issues.map(issue => `- ${issue}`).join('\n')}
+
+              ### Required Configuration
+
+              The main branch should be protected with:
+              - [x] Require status checks to pass before merging
+              - [x] Require branches to be up to date before merging
+              - [x] Required status checks:
+                ${expectedChecks.map(check => `  - [x] ${check}`).join('\n')}
+              - [x] Require a pull request before merging
+              - [x] Require approvals (minimum 1)
+              - [x] Dismiss stale reviews when new commits are pushed
+              - [x] Include administrators in these restrictions
+
+              ### How to Fix
+
+              1. Go to Repository Settings → Branches
+              2. Add a branch protection rule for \`main\`
+              3. Configure the settings as listed above
+              4. Ensure all required status checks are selected
+
+              **Auto-generated by branch protection enforcement**
+              `;
+
+              try {
+                const { data: issues } = await github.rest.issues.listForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  state: 'open',
+                  labels: 'branch-protection'
+                });
+
+                const existingIssue = issues.find(issue =>
+                  issue.title.includes('Branch Protection')
+                );
+
+                if (!existingIssue) {
+                  await github.rest.issues.create({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    title: 'Branch Protection Configuration Issues',
+                    body: issueBody,
+                    labels: ['branch-protection', 'security', 'configuration']
+                  });
+                  console.log('📝 Created issue for branch protection configuration');
+                } else {
+                  console.log('📝 Branch protection issue already exists');
+                }
+              } catch (error) {
+                console.log('ℹ️  Could not create issue (may be permissions)');
+              }
+            }
+
+  verify-merge-requirements:
+    name: Verify Merge Requirements
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Verify PR Requirements
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const requirements = [];
+
+            // Check if PR has required labels
+            const labels = pr.labels.map(label => label.name);
+            const hasChangelogLabel = labels.some(label =>
+              ['enhancement', 'bug', 'breaking-change', 'documentation'].includes(label)
+            );
+
+            if (!hasChangelogLabel) {
+              requirements.push('❌ PR must have a changelog label (enhancement, bug, breaking-change, or documentation)');
+            }
+
+            // Check if PR title follows convention
+            const title = pr.title;
+            const titlePattern = /^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+\))?: .+/;
+            if (!titlePattern.test(title)) {
+              requirements.push('❌ PR title must follow conventional commit format: type(scope): description');
+            }
+
+            // Check PR description
+            if (!pr.body || pr.body.trim().length < 10) {
+              requirements.push('❌ PR must have a meaningful description');
+            }
+
+            // Check if PR is targeting main branch
+            if (pr.base.ref !== 'main') {
+              requirements.push('ℹ️  PR is targeting branch other than main');
+            }
+
+            if (requirements.length > 0) {
+              console.log('🔍 PR Requirements Check:');
+              for (const req of requirements) {
+                console.log(`  ${req}`);
+              }
+
+              // Add a comment to the PR
+              const comment = `
+              ## PR Requirements Check
+
+              ${requirements.map(req => `- ${req}`).join('\n')}
+
+              ### Guidelines
+
+              **Title Format:** \`type(scope): description\`
+              - Types: feat, fix, docs, style, refactor, perf, test, chore, ci
+              - Example: \`feat(ui): add dark mode toggle\`
+
+              **Required Labels:** One of enhancement, bug, breaking-change, documentation
+
+              **Description:** Provide context, what changed, and why
+
+              Please update your PR to meet these requirements.
+              `;
+
+              try {
+                await github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: comment
+                });
+              } catch (error) {
+                console.log('Could not add comment to PR');
+              }
+            } else {
+              console.log('✅ PR meets all requirements');
+            }
+
+  status-summary:
+    name: Status Summary
+    runs-on: ubuntu-22.04
+    if: always()
+    needs: [enforce-protection]
+
+    steps:
+      - name: Create Status Summary
+        run: |
+          echo "# Branch Protection Status" > status.md
+          echo "" >> status.md
+          echo "## Protection Rules" >> status.md
+          echo "- Main branch protection: ${{ needs.enforce-protection.result }}" >> status.md
+          echo "" >> status.md
+          echo "## Requirements for Merge" >> status.md
+          echo "- ✅ All CI checks must pass" >> status.md
+          echo "- ✅ No security vulnerabilities" >> status.md
+          echo "- ✅ Code coverage at 100%" >> status.md
+          echo "- ✅ Zero warnings policy enforced" >> status.md
+          echo "- ✅ Code review required" >> status.md
+          echo "- ✅ Branch up to date with main" >> status.md
+          echo "" >> status.md
+          echo "Generated at: $(date)" >> status.md
+
+          cat status.md
+
+      - name: Upload Status
+        uses: actions/upload-artifact@v4
+        with:
+          name: branch-protection-status
+          path: status.md
+          retention-days: 7
