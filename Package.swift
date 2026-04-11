@@ -5,17 +5,43 @@ import PackageDescription
 
 let package = Package(
     name: "WiserOne",
+    platforms: [
+        .macOS(.v13),
+    ],
+    products: [
+        .library(
+            name: "WiserOneCore",
+            targets: ["WiserOneCore"]
+        ),
+        .executable(
+            name: "WiserOne",
+            targets: ["WiserOne"]
+        ),
+    ],
     targets: [
+        .target(
+            name: "WiserOneCore",
+            path: "sources/core"
+        ),
         .executableTarget(
             name: "WiserOne",
-            path: "Sources",
+            dependencies: ["WiserOneCore"],
+            path: "sources",
+            exclude: ["core"],
             resources: [
-                .copy("Assets.xcassets"),
-                .copy("WiserOne.entitlements"),
-                .process("Resources/01-quotes.json"),
-                .process("Resources/02-quotes.json"),
-                .process("Resources/logo.svg")
+                .copy("assets.xcassets"),
+                .process("resources")
             ]
+        ),
+        .testTarget(
+            name: "WiserOneCoreTests",
+            dependencies: ["WiserOneCore"],
+            path: "tests/core-tests"
+        ),
+        .testTarget(
+            name: "WiserOneUITests",
+            dependencies: ["WiserOne"],
+            path: "tests/ui-tests"
         )
     ]
 )
