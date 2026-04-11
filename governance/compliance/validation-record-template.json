@@ -1,0 +1,32 @@
+{
+  "recordVersion": 1,
+  "project": "WiserOne",
+  "commit": {
+    "sha": "<full-commit-sha>",
+    "shortSha": "<short-sha>",
+    "branch": "<branch>",
+    "committedAt": "<ISO-8601>"
+  },
+  "controls": {
+    "signedCommits": "pass|fail",
+    "dependencyChecksums": "pass|fail",
+    "artifactChecksums": "pass|fail",
+    "secretScan": "pass|fail",
+    "automationPatternScan": "pass|fail",
+    "vulnerabilityScanGuard": "pass|fail",
+    "macOSBinarySignature": "pass|fail",
+    "sbom": "pass|fail",
+    "coreCoverage100": "pass|fail"
+  },
+  "artifacts": {
+    "sbom": {
+      "path": "governance/sbom/cyclonedx-sbom.json",
+      "sha256": "<sha256>"
+    },
+    "resourceChecksumManifest": {
+      "path": "governance/checksums/sha256sums.txt",
+      "sha256": "<sha256>"
+    }
+  },
+  "procedure": "governance/compliance/software-validation-procedure.md"
+}

@@ -1,91 +1,136 @@
+# WiserOne
 
-<!-- markdownlint-disable MD033 MD041 -->
+Daily quotes in a macOS menu bar app.
 
-<img
-src="https://kura.pro/wiserone/images/logos/wiserone.webp"
-alt="the wiser one's logo"
-height="199"
-width="199"
-align="right"
-/>
+## What Ships
 
-<!-- markdownlint-enable MD033 MD041 -->
+- `WiserOne`: macOS AppKit executable.
+- `WiserOneCore`: platform-neutral module for resource resolution logic.
 
-# The Wiser One macOS App
+## Platform Support
 
-Daily nuggets of wisdom in a clean, minimalist design, inspiring deeper thought and personal growth with every visit.
+| Platform | Build | Test | Run Desktop App |
+| :--- | :--- | :--- | :--- |
+| macOS | `swift build` | `swift test` | `swift run WiserOne` |
+| Linux | `swift build` | `swift test` | Not supported |
+| WSL2 (Ubuntu/Debian) | `swift build` | `swift test` | Not supported |
 
-![divider][divider]
-
-## Overview 📖
-
-The Wiser One macOS App offers daily insights and wisdom in a sleek, minimalist interface, designed to inspire deeper thinking and foster personal growth. Each visit presents a unique opportunity to reflect and gain new perspectives.
-
-## Features ✨
-
-### Reading Quotes from a JSON File
-
-- The Wiser One can seamlessly access and parse a wide range of quotes stored in a JSON format. This allows for a diverse and extensive collection of wisdom nuggets. The JSON structure is optimized for quick retrieval, ensuring a smooth user experience.
-
-### Randomly Selecting a Quote
-
-- With an innovative random selection algorithm, the Wiser One presents a different quote each time, making every interaction unique. This feature encourages varied learning and prevents the monotony of repetitive content. The randomness is designed to simulate the unpredictability and richness of gaining wisdom in real life.
-
-### Displaying Quotes
-
-- **Quote Display:** Showcases a variety of motivational and inspirational quotes.
-- **Error Logging:** Robust error logging to ensure smooth user experience.
-
-## Getting Started 🚀
-
-It takes just a few minutes to get up and running with `WiserOne`.
-
-## Prerequisites 📋
-
-- macOS 10.15.4 or later
-- Xcode 12.0 or later
-- Swift 5.3 or later
-
-## Installation 🔧
-
-1. Clone the repo
+## Day 1 Setup
 
 ```sh
-git clone git@github.com:sebastienrousseau/WiserOneApp.git
-```
-
-2. Build the app
-
-```sh
+git clone https://github.com/sebastienrousseau/WiserOneApp.git
+cd WiserOneApp
 swift build
+swift test
 ```
 
-3. Run the app
+Run the app on macOS:
 
 ```sh
-swift run
+swift run WiserOne
 ```
 
-## License 📝
+Onboarding target: 15 minutes on a fresh machine.
 
-The project is licensed under the terms of MIT OR Apache-2.0.
+## Quality Gates
 
-## Contribution 🤝
+Run core quality gates:
 
-We welcome all people who want to contribute. Please see the
-[contributing instructions][1] for more information.
+```sh
+make security
+make test
+make hygiene
+```
 
-Unless you explicitly state otherwise, any contribution intentionally
-submitted for inclusion in the work by you, as defined in the
-Apache-2.0 license, shall be dual licensed as above, without any
-additional terms or conditions.
+`make hygiene` runs:
 
-## Acknowledgements 💙
+- `./scripts/quality/verify-portability.sh`
+- `./scripts/quality/verify-docs-completeness.sh`
+- `./scripts/quality/verify-content-integrity.sh`
 
-A big thank you to all the awesome contributors of [wiserone][2] for their
-help and support.
+## UI Test Target
 
-[1]: https://github.com/sebastienrousseau/WiserOneApp/blob/main/CONTRIBUTING.md
-[2]: https://github.com/sebastienrousseau/WiserOneApp/graphs/contributors
+This repository includes a dedicated macOS UI-focused XCTest target:
 
-[divider]: https://kura.pro/common/images/elements/divider.svg "divider"
+- `WiserOneUITests`
+
+Run only UI-focused tests:
+
+```sh
+make test-ui
+```
+
+Run all tests (core coverage gate + UI tests):
+
+```sh
+make test-all
+```
+
+## Signed Commits
+
+Enable commit signing locally:
+
+```sh
+git config commit.gpgsign true
+git config tag.gpgSign true
+git config gpg.format openpgp
+```
+
+Create a signed commit:
+
+```sh
+git commit -S -m "type: summary"
+```
+
+## Troubleshooting
+
+Run the explicit product name:
+
+```sh
+swift run WiserOne
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[WiserOne App\nmacOS only] --> B[WiserOneCore]
+    T[WiserOneCoreTests] --> B
+```
+
+## Repository Map
+
+```text
+.build/                (generated local build cache; not tracked)
+sources/
+  core/
+  AppDelegate.swift
+  QuoteViewController.swift
+  main.swift
+tests/
+  core-tests/
+  ui-tests/
+docs/
+scripts/
+governance/
+  security/
+  sbom/
+  checksums/
+  compliance/
+config/
+```
+
+Detailed docs are available in:
+
+- [docs/repository-layout.md](docs/repository-layout.md)
+- [docs/runtime.md](docs/runtime.md)
+- [tests/README.md](tests/README.md)
+- [scripts/README.md](scripts/README.md)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Licensed under MIT OR Apache-2.0.

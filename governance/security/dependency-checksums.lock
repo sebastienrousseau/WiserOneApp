@@ -1,0 +1,6 @@
+# Dependency Checksum Lock
+# Format: source_url|sha256|signature_reference
+# Add one row per external SwiftPM dependency.
+# sha256: checksum of vendored source archive or immutable source package artifact.
+# signature_reference: URL or document ID of vendor signature verification evidence.
+# Current state: no external SwiftPM dependencies.
