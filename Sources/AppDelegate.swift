@@ -16,6 +16,7 @@
 //  Created by Sebastien Rousseau on 27/01/2024.
 //
 
+#if canImport(Cocoa)
 import Cocoa
 
 // MARK: - Error Definitions
@@ -23,20 +24,23 @@ import Cocoa
 /// Enumerates possible errors within the application for more precise error handling.
 enum AppError: Error {
     case statusBarItemButtonNotAvailable
-    case popoverSetupFailed(message: String)
-    case contentUpdateFailed(message: String)
 }
 
 // MARK: - AppDelegate
 
 /// The main class responsible for initializing and managing the application's status bar item and its associated popover.
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let minMenuIconSize: CGFloat = 12
+    private static let maxMenuIconSize: CGFloat = 32
+    private static let menuIconSize: CGFloat = 24
+
     var statusBarItem: NSStatusItem?
 
     // Lazy initialization of popover with default behavior set via property.
     lazy var popover: NSPopover = {
         let popover = NSPopover()
         popover.behavior = .transient
+        popover.animates = true
         return popover
     }()
 
@@ -58,7 +62,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Initializes and configures the status bar item.
     /// - Throws: `AppError.statusBarItemButtonNotAvailable` if unable to access the status bar item button.
     private func setupStatusBarItem() throws {
-        statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusBarItem?.isVisible = true
         guard let button = statusBarItem?.button else {
             throw AppError.statusBarItemButtonNotAvailable
         }
@@ -68,7 +73,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Configures the status bar button with a custom icon and action.
     /// - Parameter button: The `NSStatusBarButton` to configure.
     private func configureButton(_ button: NSStatusBarButton) {
-        button.attributedTitle = createStatusBarIcon()
+        assert(Thread.isMainThread, "Status bar button configuration must run on the main thread.")
+        if let image = createStatusBarImage() {
+            button.image = image
+            button.imageScaling = .scaleProportionallyDown
+            button.imagePosition = .imageOnly
+            button.attributedTitle = NSAttributedString(string: "")
+        } else {
+            button.image = nil
+            button.attributedTitle = createFallbackStatusBarTitle()
+        }
+        button.toolTip = "WiserOne"
+        button.target = self
         button.action = #selector(togglePopover(_:))
     }
 
@@ -83,13 +99,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// - Parameter viewController: The `QuoteViewController` instance to display within the popover.
     private func updatePopoverContent(with viewController: QuoteViewController) {
         popover.contentViewController = viewController
-        popover.contentSize = viewController.view.frame.size
+        popover.contentSize = QuoteViewController.fixedPopoverSize
     }
 
     // MARK: - Popover Display Handling
 
     /// Toggles the popover's visibility based on its current state.
     @objc private func togglePopover(_ sender: Any?) {
+        assert(statusBarItem != nil, "Status item must exist before popover toggling.")
         guard let button = statusBarItem?.button else { return }
         if popover.isShown {
             closePopover(sender)
@@ -101,8 +118,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Displays the popover anchored to the provided view.
     /// - Parameter view: The `NSView` from which to anchor the popover.
     private func showPopover(from view: NSView) {
+        assert(Thread.isMainThread, "Popover presentation must run on the main thread.")
+        if let quoteViewController = popover.contentViewController as? QuoteViewController {
+            quoteViewController.refreshForMenuBarClick()
+        }
+        popover.contentSize = QuoteViewController.fixedPopoverSize
         popover.show(relativeTo: view.bounds, of: view, preferredEdge: NSRectEdge.minY)
-        popover.contentViewController?.view.window?.makeKey()
+        if let window = popover.contentViewController?.view.window {
+            window.contentMinSize = QuoteViewController.fixedPopoverSize
+            window.contentMaxSize = QuoteViewController.fixedPopoverSize
+            window.minSize = QuoteViewController.fixedPopoverSize
+            window.maxSize = QuoteViewController.fixedPopoverSize
+        }
     }
 
     /// Closes the popover.
@@ -112,14 +139,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Utility Methods
 
-    /// Creates a custom icon for the status bar item.
-    /// - Returns: An `NSAttributedString` representing the icon.
-    private func createStatusBarIcon() -> NSAttributedString {
-        let font = NSFont.systemFont(ofSize: 22, weight: .bold)
+    /// Builds a template image for status bar rendering in both light and dark modes.
+    private func createStatusBarImage() -> NSImage? {
+        #if SWIFT_PACKAGE
+            let bundle = Bundle.module
+        #else
+            let bundle = Bundle.main
+        #endif
+
+        let image = bundle.url(forResource: "logo-menubar", withExtension: "svg")
+            .flatMap { NSImage(contentsOf: $0) }
+            ?? bundle.url(forResource: "logo", withExtension: "svg")
+            .flatMap { NSImage(contentsOf: $0) }
+            ?? bundle.image(forResource: NSImage.Name("logo-menubar"))
+            ?? bundle.image(forResource: NSImage.Name("logo"))
+            ?? NSImage(named: NSImage.Name("logo-menubar"))
+            ?? NSImage(named: NSImage.Name("logo"))
+
+        guard let image else { return nil }
+
+        let templateImage = image.copy() as? NSImage ?? image
+        assert(Self.menuIconSize >= Self.minMenuIconSize, "Menu icon size underflows safe bound.")
+        assert(Self.menuIconSize <= Self.maxMenuIconSize, "Menu icon size overflows safe bound.")
+        templateImage.isTemplate = true
+        templateImage.size = NSSize(width: Self.menuIconSize, height: Self.menuIconSize)
+        return templateImage
+    }
+
+    /// Builds a fallback glyph title that follows system appearance in the menu bar.
+    private func createFallbackStatusBarTitle() -> NSAttributedString {
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
+            .font: NSFont.systemFont(ofSize: 18, weight: .black),
             .foregroundColor: NSColor.labelColor,
-            .baselineOffset: NSNumber(value: -2),
+            .baselineOffset: -1.0,
         ]
         return NSAttributedString(string: "⏣", attributes: attributes)
     }
@@ -135,11 +187,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         switch error {
         case AppError.statusBarItemButtonNotAvailable:
             print("Error: Status bar item button not available.")
-        case let AppError.popoverSetupFailed(message),
-             let AppError.contentUpdateFailed(message):
-            print("Error: \(message)")
         default:
             print("An unknown error occurred.")
         }
     }
 }
+#endif

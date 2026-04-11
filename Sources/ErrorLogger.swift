@@ -23,6 +23,20 @@ import Foundation
 /// It provides a standardized way to log errors to a file.
 class ErrorLogger {
     static let shared = ErrorLogger()
+    private static let maxLogEntryLength = 8_192
+    private let fileManager = FileManager.default
+    private lazy var logURL: URL? = {
+        fileManager.urls(for: .documentDirectory, in: .userDomainMask)
+            .first?
+            .appendingPathComponent("appLog.txt")
+    }()
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter
+    }()
 
     private init() {}
 
@@ -33,25 +47,40 @@ class ErrorLogger {
     ///   - file: The file in which the error occurred.
     ///   - method: The method in which the error occurred.
     func logError(_ error: Error, errorCode: Int? = nil, file: String = #file, method: String = #function) {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let timestamp = dateFormatter.string(from: Date())
-
-        let errorDescription = error.localizedDescription
-        let codeDescription = errorCode != nil ? "Code: \(errorCode!) - " : ""
-        let fileDescription = "File: \(file) - "
-        let methodDescription = "Method: \(method) - "
-
-        let logString = "\(timestamp) - \(codeDescription)\(fileDescription)\(methodDescription)Error: \(errorDescription)\n"
-
-        // Log to file
+        assert(!file.isEmpty, "File metadata must not be empty.")
+        assert(!method.isEmpty, "Method metadata must not be empty.")
+        let timestamp = Self.timestampFormatter.string(from: Date())
+        let logString = buildLogString(
+            timestamp: timestamp,
+            error: error,
+            errorCode: errorCode,
+            file: file,
+            method: method
+        )
         logToFile(logString: logString)
     }
 
+    private func buildLogString(
+        timestamp: String,
+        error: Error,
+        errorCode: Int?,
+        file: String,
+        method: String
+    ) -> String {
+        let errorDescription = error.localizedDescription
+        let codeDescription = errorCode.map { "Code: \($0) - " } ?? ""
+        let fileDescription = "File: \(file) - "
+        let methodDescription = "Method: \(method) - "
+        let logString = "\(timestamp) - \(codeDescription)\(fileDescription)\(methodDescription)Error: \(errorDescription)\n"
+        let bounded = String(logString.prefix(Self.maxLogEntryLength))
+        assert(!bounded.isEmpty, "Generated log entry must not be empty.")
+        return bounded
+    }
+
     private func logToFile(logString: String) {
-        let fileManager = FileManager.default
-        let urls = fileManager.urls(for: .documentDirectory, in: .userDomainMask)
-        guard let logURL = urls.first?.appendingPathComponent("appLog.txt") else {
+        assert(!logString.isEmpty, "Log writes require non-empty content.")
+        assert(logString.count <= Self.maxLogEntryLength, "Log entry exceeds upper bound.")
+        guard let logURL else {
             return
         }
 
@@ -63,11 +92,11 @@ class ErrorLogger {
             } else {
                 // If the file exists, append new content
                 let fileHandle = try FileHandle(forWritingTo: logURL)
-                fileHandle.seekToEndOfFile()
+                defer { try? fileHandle.close() }
+                try fileHandle.seekToEnd()
                 if let data = logString.data(using: .utf8) {
-                    fileHandle.write(data)
+                    try fileHandle.write(contentsOf: data)
                 }
-                fileHandle.closeFile()
             }
         } catch {
             print("Unable to log to file: \(error)")

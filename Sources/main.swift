@@ -16,18 +16,29 @@
 //  Created by Sebastien Rousseau on 27/01/2024.
 //
 
+#if canImport(Cocoa)
 import Cocoa
 
 /// Gets reference to shared application instance
 let app = NSApplication.shared
+assert(Thread.isMainThread, "App bootstrap must start on the main thread.")
+
+/// Ensure a menu-bar app launched from `swift run` can present status items.
+app.setActivationPolicy(.accessory)
 
 /// Creates the application delegate instance
 let delegate = AppDelegate()
 
 /// Sets delegate to receive app events and control app lifecycle
 app.delegate = delegate
+assert(app.delegate != nil, "Application delegate must be assigned before runloop start.")
 
 /// Runs application by starting the runloop
 /// This call will not return until app terminates
 /// Apps on macOS require a runloop unlike command line tools
 app.run()
+#else
+import Foundation
+
+print("WiserOne desktop app requires macOS (AppKit/Cocoa).")
+#endif
