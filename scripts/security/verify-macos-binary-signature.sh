@@ -22,7 +22,7 @@ fi
 
 codesign --verify --deep --strict --verbose=2 "$bin_path"
 
-if ! codesign -dv --verbose=4 "$bin_path" 2>&1 | rg -q '^Identifier='; then
+if ! codesign -dv --verbose=4 "$bin_path" 2>&1 | grep -q '^Identifier='; then
     echo "Code signature metadata missing identifier for $bin_path" >&2
     exit 1
 fi

@@ -45,7 +45,13 @@ if [ -n "$case_collision_output" ]; then
 fi
 
 # 3) Hardcoded absolute local paths are not portable.
-absolute_path_hits="$(rg -n '/Users/|/home/|[A-Za-z]:\\\\' README.md CONTRIBUTING.md Package.swift Makefile docs scripts sources tests governance .github --glob '!scripts/quality/verify-portability.sh' 2>/dev/null || true)"
+absolute_path_hits="$(
+    grep -RInE '/Users/|/home/|[A-Za-z]:\\\\' \
+        README.md CONTRIBUTING.md Package.swift Makefile docs scripts sources tests governance .github \
+        2>/dev/null \
+        | grep -v '^scripts/quality/verify-portability.sh:' \
+        || true
+)"
 if [ -n "$absolute_path_hits" ]; then
     echo "Portability check failed: hardcoded absolute paths found:" >&2
     echo "$absolute_path_hits" >&2

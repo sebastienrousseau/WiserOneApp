@@ -30,34 +30,34 @@ done
 for doc_path in docs/*.md; do
     [ "$doc_path" = "docs/README.md" ] && continue
     doc_name="$(basename "$doc_path")"
-    if ! rg -q "${doc_name}" docs/README.md; then
+    if ! grep -q "${doc_name}" docs/README.md; then
         echo "Documentation completeness failed: docs/README.md does not reference ${doc_name}" >&2
         failed=1
     fi
 done
 
 # Ensure root README includes core onboarding and signed commit guidance.
-if ! rg -q 'swift build' README.md; then
+if ! grep -q 'swift build' README.md; then
     echo "Documentation completeness failed: README.md missing build command." >&2
     failed=1
 fi
 
-if ! rg -q 'swift test' README.md; then
+if ! grep -q 'swift test' README.md; then
     echo "Documentation completeness failed: README.md missing test command." >&2
     failed=1
 fi
 
-if ! rg -q 'swift run WiserOne' README.md; then
+if ! grep -q 'swift run WiserOne' README.md; then
     echo "Documentation completeness failed: README.md missing app run command." >&2
     failed=1
 fi
 
-if ! rg -q 'git commit -S' README.md; then
+if ! grep -q 'git commit -S' README.md; then
     echo "Documentation completeness failed: README.md missing signed commit guidance." >&2
     failed=1
 fi
 
-if ! rg -q 'git commit -S' CONTRIBUTING.md; then
+if ! grep -q 'git commit -S' CONTRIBUTING.md; then
     echo "Documentation completeness failed: CONTRIBUTING.md missing signed commit guidance." >&2
     failed=1
 fi
