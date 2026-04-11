@@ -1,0 +1,56 @@
+name: Security
+
+on:
+  push:
+    branches:
+      - main
+      - feat/**
+  pull_request:
+  schedule:
+    - cron: "0 4 * * 1"
+
+jobs:
+  supply-chain-audit:
+    name: Supply Chain Audit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+
+      - name: Initialize
+        run: make init
+
+      - name: Security Audit
+        run: make security
+
+      - name: Verify Signed Commit Range
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            RANGE="${{ github.event.pull_request.base.sha }}..${{ github.sha }}"
+          else
+            RANGE="HEAD~20..HEAD"
+          fi
+          ./scripts/security/verify-signed-commits.sh "$RANGE"
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ matrix.os }}
+          path: |
+            governance/sbom/cyclonedx-sbom.json
+            governance/sbom/validation-record.json
+          if-no-files-found: error

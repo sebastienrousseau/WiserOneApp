@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - feat/**
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      COVERAGE_THRESHOLD: "100"
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.0"
+
+      - name: Init Environment
+        run: make init
+
+      - name: Security Audit
+        run: make security
+
+      - name: Build
+        run: make build
+
+      - name: Test and Coverage
+        run: make test
+
+      - name: Hygiene Gate
+        run: make hygiene
+
+      - name: Verify Signed Commits
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            RANGE="${{ github.event.pull_request.base.sha }}..${{ github.sha }}"
+          else
+            RANGE="HEAD~20..HEAD"
+          fi
+          ./scripts/security/verify-signed-commits.sh "$RANGE"
+
+      - name: Upload Security Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts-${{ matrix.os }}
+          path: |
+            governance/sbom/cyclonedx-sbom.json
+            governance/sbom/validation-record.json
+          if-no-files-found: error
+
+  wsl2-self-hosted:
+    name: WSL2 Build and Test (Optional)
+    if: github.event_name == 'pull_request' && vars.ENABLE_WSL2_RUNNER == 'true'
+    runs-on:
+      - self-hosted
+      - windows
+      - x64
+      - wsl2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and Test in WSL2
+        shell: bash
+        run: |
+          make init
+          make security
+          make build
+          make test
+          make hygiene

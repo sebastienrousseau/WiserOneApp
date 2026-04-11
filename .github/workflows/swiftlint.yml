@@ -6,19 +6,14 @@ on:
 
 jobs:
   SwiftLint:
-    runs-on: macOS-latest
+    runs-on: macos-latest
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
-      - name: Set Up Swift
-        run: |
-          SWIFT_URL="https://swift.org/builds/swift-5.5-release/xcode/swift-5.5-RELEASE/swift-5.5-RELEASE-osx.pkg"
-          curl -o swift.pkg $SWIFT_URL
-          sudo installer -pkg swift.pkg -target /
-          export PATH="/usr/bin:$PATH"
-          swift --version
+      - name: Verify Swift Toolchain
+        run: swift --version
 
       - name: Install SwiftLint
         run: |
@@ -28,4 +23,3 @@ jobs:
 
       - name: Run SwiftLint
         run: swiftlint
-
