@@ -59,9 +59,10 @@ final class QuoteRepository {
     }
 
     private func discoverQuoteResources() -> [(name: String, url: URL)] {
-        guard let resourceURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
+        guard let discoveredURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
             return []
         }
+        let resourceURLs = discoveredURLs.map { $0 as URL }
 
         var selectedResources = [String: URL]()
 
