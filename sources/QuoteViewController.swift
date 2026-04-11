@@ -37,6 +37,7 @@ class QuoteViewController: NSViewController {
     private static let logoToFontScaleFactor: CGFloat = 4.8
     private static let authorLabelHeight: CGFloat = 22
     static let fixedPopoverSize = NSSize(width: panelWidth, height: panelHeight)
+    private static let quoteContentWidth: CGFloat = panelWidth - (quoteHorizontalPadding * 2)
 
     /// Scroll container for long quote rendering within fixed popup dimensions.
     var quoteScrollView = NSScrollView()
@@ -166,7 +167,7 @@ class QuoteViewController: NSViewController {
         quoteTextView.isVerticallyResizable = true
         quoteTextView.minSize = .zero
         quoteTextView.maxSize = NSSize(
-            width: Self.panelWidth - (Self.quoteHorizontalPadding * 2),
+            width: Self.quoteContentWidth,
             height: CGFloat.greatestFiniteMagnitude
         )
         quoteTextView.textContainer?.lineFragmentPadding = 0
@@ -177,7 +178,7 @@ class QuoteViewController: NSViewController {
         quoteTextView.frame = NSRect(
             x: 0,
             y: 0,
-            width: Self.panelWidth - (Self.quoteHorizontalPadding * 2),
+            width: Self.quoteContentWidth,
             height: 1
         )
 
@@ -349,9 +350,10 @@ class QuoteViewController: NSViewController {
         if let textContainer = quoteTextView.textContainer,
            let layoutManager = quoteTextView.layoutManager
         {
+            let targetWidth = max(quoteScrollView.contentSize.width, Self.quoteContentWidth)
+            textContainer.containerSize = NSSize(width: targetWidth, height: CGFloat.greatestFiniteMagnitude)
             layoutManager.ensureLayout(for: textContainer)
             let usedRect = layoutManager.usedRect(for: textContainer)
-            let targetWidth = quoteScrollView.contentSize.width
             let targetHeight = max(usedRect.height + (quoteTextView.textContainerInset.height * 2), quoteScrollView.contentSize.height)
             quoteTextView.setFrameSize(NSSize(width: max(targetWidth, 1), height: max(targetHeight, 1)))
         }
