@@ -48,13 +48,7 @@ class QuoteViewController: NSViewController {
     var button = NSButton()
     private var logoWidthConstraint: NSLayoutConstraint?
     private var logoHeightConstraint: NSLayoutConstraint?
-    private lazy var resourceBundle: Bundle = {
-        #if SWIFT_PACKAGE
-            Bundle.module
-        #else
-            Bundle.main
-        #endif
-    }()
+    private lazy var resourceBundle: Bundle = ResourceBundleLocator.resolve()
     private lazy var quoteService = QuoteService(repository: QuoteRepository(bundle: resourceBundle))
 
     // MARK: - View Lifecycle

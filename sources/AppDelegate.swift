@@ -200,11 +200,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Builds a template image for status bar rendering in both light and dark modes.
     private func createStatusBarImage() -> NSImage? {
-        #if SWIFT_PACKAGE
-            let bundle = Bundle.module
-        #else
-            let bundle = Bundle.main
-        #endif
+        let bundle = ResourceBundleLocator.resolve()
 
         let image = bundle.url(forResource: "logo-menubar", withExtension: "svg")
             .flatMap { NSImage(contentsOf: $0) }
