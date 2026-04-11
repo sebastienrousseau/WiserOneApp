@@ -7,12 +7,18 @@
 /.build
 /Packages
 DerivedData/
+/dist
 
 # Xcode user data
 xcuserdata/
+*.xcarchive
 
 # Exclude sensitive information
 .netrc
+.env
+.env.*
+*.provisionprofile
+*.mobileprovision
 
 # Exclude the project file
 *.xcodeproj
