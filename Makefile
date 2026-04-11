@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: init build clean test test-all test-unit test-ui test-coverage lint shell-lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record governance-refresh security portability docs-check content-integrity hygiene install-hooks prepush-check ci-local release-github release-appstore
+.PHONY: init build clean test test-all test-unit test-ui test-coverage lint shell-lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record governance-refresh security portability docs-check content-integrity hygiene install-hooks prepush-check ci-local release-github release-appstore release-macos-artifacts release-linux-packages
 
 init:
 	./scripts/bootstrap/init.sh
@@ -94,3 +94,9 @@ release-github:
 
 release-appstore:
 	./scripts/release/release-macos.sh appstore
+
+release-macos-artifacts:
+	./scripts/release/package-macos-dmg.sh "${VERSION:-0.0.0}"
+
+release-linux-packages:
+	./scripts/release/package-linux.sh "${VERSION:-0.0.0}"

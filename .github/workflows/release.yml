@@ -1,0 +1,166 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish artifacts for (example: v0.0.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package-macos:
+    name: Package macOS Artifacts
+    runs-on: macos-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Tag and Version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG_NAME="${{ inputs.tag }}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG_NAME#v}"
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Package DMG and ZIP
+        run: ./scripts/release/package-macos-dmg.sh "$VERSION"
+
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-macos
+          path: |
+            dist/WiserOne-macos-${{ env.VERSION }}.dmg
+            dist/WiserOne-macos-${{ env.VERSION }}.zip
+          if-no-files-found: error
+
+  package-linux:
+    name: Package Linux Artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Swift
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
+        with:
+          swift-version: '6.0'
+
+      - name: Install Packaging Tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm zstd
+
+      - name: Resolve Tag and Version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG_NAME="${{ inputs.tag }}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG_NAME#v}"
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Package DEB, RPM, and Arch
+        run: ./scripts/release/package-linux.sh "$VERSION"
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: release-linux
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.pkg.tar.zst
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release Assets
+    runs-on: ubuntu-latest
+    needs:
+      - package-macos
+      - package-linux
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos
+          path: dist/release-assets
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-linux
+          path: dist/release-assets
+
+      - name: Resolve Tag and Version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG_NAME="${{ inputs.tag }}"
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+          VERSION="${TAG_NAME#v}"
+          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - name: Generate Artifact Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist/release-assets
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum * > SHA256SUMS.txt
+          else
+            shasum -a 256 * > SHA256SUMS.txt
+          fi
+
+      - name: Create Release if Missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release ${TAG_NAME} already exists."
+          else
+            gh release create "$TAG_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "WiserOne ${TAG_NAME}" \
+              --generate-notes
+          fi
+
+      - name: Upload Release Artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG_NAME" dist/release-assets/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --clobber

@@ -92,6 +92,22 @@ Create a signed commit:
 git commit -S -m "type: summary"
 ```
 
+## Release Artifacts
+
+Tag-based releases now publish installable artifacts:
+
+- macOS: `WiserOne-macos-<version>.dmg` and `WiserOne-macos-<version>.zip`
+- Debian/Ubuntu: `wiserone_<version>_<arch>.deb`
+- RPM distributions: `wiserone-<version>-1.<arch>.rpm`
+- Arch: `wiserone-<version>-1-<arch>.pkg.tar.zst`
+
+Build locally:
+
+```sh
+make release-macos-artifacts VERSION=0.0.3     # macOS only
+make release-linux-packages VERSION=0.0.3      # Linux only
+```
+
 ## Troubleshooting
 
 Run the explicit product name:

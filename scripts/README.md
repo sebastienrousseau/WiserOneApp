@@ -18,6 +18,8 @@ Terminal-only automation for setup, quality, security, git hooks, and release wo
 - `security/security-audit.sh`: full security gate (`make security`).
 - `git/pre-push-guard.sh`: pre-push checks (`make prepush-check` or git hook).
 - `release/release-macos.sh`: release flow (`make release-github` or `make release-appstore`).
+- `release/package-macos-dmg.sh`: macOS installer artifacts (`make release-macos-artifacts VERSION=0.0.3`).
+- `release/package-linux.sh`: Linux package artifacts (`make release-linux-packages VERSION=0.0.3`).
 
 ## Governance Refresh
 
