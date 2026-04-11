@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -eu
 
-repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$repo_root"
 
 failed=0
@@ -46,7 +46,7 @@ fi
 
 # 3) Hardcoded absolute local paths are not portable.
 absolute_path_hits="$(
-    grep -RInE '/Users/|/home/|[A-Za-z]:\\\\' \
+    grep -RInE "/Users/|/home/|[A-Za-z]:\\\\" \
         README.md CONTRIBUTING.md Package.swift Makefile docs scripts sources tests governance .github \
         2>/dev/null \
         | grep -v '^scripts/quality/verify-portability.sh:' \
@@ -62,7 +62,7 @@ fi
 crlf_paths=""
 while IFS= read -r path; do
     case "$path" in
-        *.md|*.swift|*.sh|*.yml|*.yaml|*.json|*.toml|*.txt|*.plist|*.html|Makefile|Package.swift|.gitignore|.gitattributes|.dockerignore)
+        *.md|*.swift|*.sh|*.yml|*.yaml|*.json|*.toml|*.txt|*.plist|*.html|Makefile|.gitignore|.gitattributes|.dockerignore)
             if LC_ALL=C grep -q "$(printf '\r')" "$path"; then
                 crlf_paths="${crlf_paths}${path}\n"
             fi

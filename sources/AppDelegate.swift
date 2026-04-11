@@ -35,6 +35,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private static let menuIconSize: CGFloat = 24
 
     var statusBarItem: NSStatusItem?
+    private(set) lazy var statusItemContextMenu: NSMenu = {
+        let menu = NSMenu(title: "WiserOne")
+        let quitItem = NSMenuItem(
+            title: "Quit WiserOne",
+            action: #selector(quitApplication(_:)),
+            keyEquivalent: "q"
+        )
+        quitItem.target = self
+        menu.addItem(quitItem)
+        return menu
+    }()
 
     // Lazy initialization of popover with default behavior set via property.
     lazy var popover: NSPopover = {
@@ -86,6 +97,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         button.toolTip = "WiserOne"
         button.target = self
         button.action = #selector(togglePopover(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
 
     // MARK: - Popover Management
@@ -108,6 +120,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func togglePopover(_ sender: Any?) {
         assert(statusBarItem != nil, "Status item must exist before popover toggling.")
         guard let button = statusBarItem?.button else { return }
+        if isContextClickEvent(NSApp.currentEvent) {
+            showContextMenu(from: button)
+            return
+        }
         if popover.isShown {
             closePopover(sender)
         } else {
@@ -135,6 +151,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Closes the popover.
     private func closePopover(_ sender: Any?) {
         popover.performClose(sender)
+    }
+
+    private func isContextClickEvent(_ event: NSEvent?) -> Bool {
+        guard let event else { return false }
+
+        if event.type == .rightMouseDown || event.type == .rightMouseUp {
+            return true
+        }
+
+        if (event.type == .leftMouseDown || event.type == .leftMouseUp), event.modifierFlags.contains(.control) {
+            return true
+        }
+
+        return false
+    }
+
+    private func showContextMenu(from button: NSStatusBarButton) {
+        closePopover(nil)
+        statusItemContextMenu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY + 4), in: button)
+    }
+
+    @objc private func quitApplication(_ sender: Any?) {
+        NSApp.terminate(sender)
     }
 
     // MARK: - Utility Methods

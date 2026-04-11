@@ -5,9 +5,9 @@ Thanks for helping improve WiserOne.
 ## Setup
 
 ```sh
+make init
 swift build
-swift test
-make hygiene
+make ci-local
 ```
 
 On macOS, launch the app with:
@@ -25,7 +25,8 @@ Configure Git signing:
 ```sh
 git config commit.gpgsign true
 git config tag.gpgSign true
-git config gpg.format openpgp
+git config gpg.format ssh
+git config user.signingkey ~/.ssh/id_ed25519.pub
 ```
 
 Create signed commits:
@@ -47,7 +48,7 @@ Open pull requests with:
 - clear title
 - short problem statement
 - short change summary
-- test evidence (`swift test` output)
+- test evidence (`make ci-local` output)
 
 Keep pull requests small and reviewable.
 
@@ -55,10 +56,21 @@ Keep pull requests small and reviewable.
 
 - Keep cross-platform logic in `sources/core`.
 - Keep macOS UI logic in app files under `sources/`.
+- Keep quote data loading logic in `QuoteRepository` and `QuoteService`.
 - Add core tests in `tests/core-tests`.
 - Add UI smoke tests in `tests/ui-tests`.
 - Prefer simple names and short functions.
 - Write comments that explain intent, not syntax.
+
+## Governance Artifacts
+
+Do not regenerate governance files in routine commits.
+
+Use this only when the change requires updated governance records:
+
+```sh
+make governance-refresh
+```
 
 ## Report Issues
 

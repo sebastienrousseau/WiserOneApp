@@ -45,6 +45,8 @@ final class WiserOneUITests: XCTestCase {
         XCTAssertTrue(sut.popover.animates)
         XCTAssertEqual(sut.popover.contentSize, QuoteViewController.fixedPopoverSize)
         XCTAssertTrue(sut.popover.contentViewController is QuoteViewController)
+        XCTAssertEqual(sut.statusItemContextMenu.items.count, 1)
+        XCTAssertEqual(sut.statusItemContextMenu.items.first?.title, "Quit WiserOne")
     }
 }
 #endif

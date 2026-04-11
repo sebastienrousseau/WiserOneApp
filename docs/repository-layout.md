@@ -5,6 +5,9 @@
 - `sources/`: app runtime entry points and UI logic.
 - `sources/core/`: portable logic.
 - `sources/resources/`: quote JSON and menu bar SVG assets.
+- `sources/QuoteRepository.swift`: quote resource discovery and decoding.
+- `sources/QuoteCache.swift`: thread-safe in-memory quote cache.
+- `sources/QuoteService.swift`: quote selection and rotation state.
 
 ## Verification
 

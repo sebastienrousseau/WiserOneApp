@@ -3,7 +3,18 @@ set -eu
 
 git config commit.gpgsign true
 git config tag.gpgSign true
-git config gpg.format openpgp
+
+if ! git config --get gpg.format >/dev/null 2>&1; then
+    signing_key="$(git config --get user.signingkey 2>/dev/null || true)"
+    case "$signing_key" in
+        *".ssh/"*|ssh-*)
+            git config gpg.format ssh
+            ;;
+        *)
+            git config gpg.format openpgp
+            ;;
+    esac
+fi
 
 if command -v swift >/dev/null 2>&1; then
     swift --version

@@ -4,13 +4,18 @@ on:
   push:
     branches:
       - main
-      - feat/**
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
     name: Build and Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     env:
       COVERAGE_THRESHOLD: "100"
     strategy:
@@ -21,21 +26,41 @@ jobs:
           - ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Setup Swift (Linux)
         if: runner.os == 'Linux'
-        uses: swift-actions/setup-swift@v2
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a
         with:
           swift-version: "6.0"
+
+      - name: Cache SwiftPM (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.swiftpm
+            .build
+          key: ${{ runner.os }}-swiftpm-${{ hashFiles('Package.swift') }}
+          restore-keys: |
+            ${{ runner.os }}-swiftpm-
 
       - name: Show Swift Version
         run: swift --version
 
       - name: Init Environment
         run: make init
+
+      - name: Install ShellCheck (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Shell Lint
+        run: make shell-lint
 
       - name: Security Audit
         run: make security
@@ -60,7 +85,7 @@ jobs:
           ./scripts/security/verify-signed-commits.sh "$RANGE"
 
       - name: Upload Security Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: security-artifacts-${{ matrix.os }}
           path: |
@@ -78,7 +103,7 @@ jobs:
       - wsl2
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - name: Build and Test in WSL2
         shell: bash
         run: |

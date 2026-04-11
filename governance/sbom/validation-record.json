@@ -2,10 +2,10 @@
   "recordVersion": 1,
   "project": "WiserOne",
   "commit": {
-    "sha": "57037470e1f9a840c9891e0935c650aba563e1a7",
-    "shortSha": "5703747",
+    "sha": "76cd1e0e1f91757f9dc7fa53fb3122763d0c75aa",
+    "shortSha": "76cd1e0",
     "branch": "feat/v0.0.3",
-    "committedAt": "2026-04-11T13:03:14+01:00"
+    "committedAt": "2026-04-11T13:56:16+01:00"
   },
   "controls": {
     "signedCommits": "pass",
@@ -21,7 +21,7 @@
   "artifacts": {
     "sbom": {
       "path": "governance/sbom/cyclonedx-sbom.json",
-      "sha256": "03cfe33a2b37d476099afd23c8345191a12024076e51afc977393b4ddc3741e7"
+      "sha256": "117b69831ed838a9ab9657e8003bc4c08159de045a0a74da37e2d67e7ed4e43b"
     },
     "resourceChecksumManifest": {
       "path": "governance/checksums/sha256sums.txt",

@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: init build clean test test-all test-unit test-ui test-coverage lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record security portability docs-check content-integrity hygiene install-hooks prepush-check ci-local release-github release-appstore
+.PHONY: init build clean test test-all test-unit test-ui test-coverage lint shell-lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record governance-refresh security portability docs-check content-integrity hygiene install-hooks prepush-check ci-local release-github release-appstore
 
 init:
 	./scripts/bootstrap/init.sh
@@ -27,6 +27,9 @@ test-coverage:
 
 lint:
 	if command -v swiftlint >/dev/null 2>&1; then swiftlint; else echo "swiftlint not installed; skipping"; fi
+
+shell-lint:
+	./scripts/quality/lint-shell.sh
 
 verify-signatures:
 	./scripts/security/verify-signed-commits.sh
@@ -58,6 +61,11 @@ sbom:
 generate-validation-record:
 	./scripts/security/generate-validation-record.sh
 
+governance-refresh:
+	./scripts/security/generate-sbom.sh
+	./scripts/security/generate-validation-record.sh
+	./scripts/security/update-artifact-checksums.sh
+
 security:
 	./scripts/security/security-audit.sh
 
@@ -71,7 +79,7 @@ docs-check:
 content-integrity:
 	./scripts/quality/verify-content-integrity.sh
 
-hygiene: portability docs-check
+hygiene: portability docs-check shell-lint
 
 install-hooks:
 	./scripts/bootstrap/install-hooks.sh

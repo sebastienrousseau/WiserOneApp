@@ -14,6 +14,16 @@ Terminal-only automation for setup, quality, security, git hooks, and release wo
 
 - `bootstrap/init.sh`: local bootstrap (`make init`).
 - `quality/test-with-coverage.sh`: coverage gate (`make test`).
+- `quality/lint-shell.sh`: shell lint gate (`make shell-lint`).
 - `security/security-audit.sh`: full security gate (`make security`).
 - `git/pre-push-guard.sh`: pre-push checks (`make prepush-check` or git hook).
 - `release/release-macos.sh`: release flow (`make release-github` or `make release-appstore`).
+
+## Governance Refresh
+
+Governance artifacts are not regenerated during routine local checks.
+Regenerate tracked SBOM and validation records explicitly when needed:
+
+```sh
+make governance-refresh
+```

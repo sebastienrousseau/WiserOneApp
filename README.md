@@ -20,8 +20,9 @@ Daily quotes in a macOS menu bar app.
 ```sh
 git clone https://github.com/sebastienrousseau/WiserOneApp.git
 cd WiserOneApp
+make init
 swift build
-swift test
+make test
 ```
 
 Run the app on macOS:
@@ -40,6 +41,7 @@ Run core quality gates:
 make security
 make test
 make hygiene
+make ci-local
 ```
 
 `make hygiene` runs:
@@ -47,6 +49,13 @@ make hygiene
 - `./scripts/quality/verify-portability.sh`
 - `./scripts/quality/verify-docs-completeness.sh`
 - `./scripts/quality/verify-content-integrity.sh`
+- `./scripts/quality/lint-shell.sh`
+
+Refresh tracked governance artifacts only when needed:
+
+```sh
+make governance-refresh
+```
 
 ## UI Test Target
 
@@ -73,7 +82,8 @@ Enable commit signing locally:
 ```sh
 git config commit.gpgsign true
 git config tag.gpgSign true
-git config gpg.format openpgp
+git config gpg.format ssh
+git config user.signingkey ~/.ssh/id_ed25519.pub
 ```
 
 Create a signed commit:
@@ -89,6 +99,13 @@ Run the explicit product name:
 ```sh
 swift run WiserOne
 ```
+
+CI failure quick checks:
+
+1. Run `make ci-local` before pushing.
+2. On Linux, install `shellcheck` if `make hygiene` reports missing shell lint support.
+3. Keep `sources/` and `tests/` lowercase in any new path additions.
+4. Refresh SBOM and validation records only with `make governance-refresh` when governance artifacts must change.
 
 ## Architecture
 

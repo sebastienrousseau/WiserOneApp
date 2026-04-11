@@ -20,65 +20,11 @@
 #if canImport(Cocoa)
 import Cocoa
 
-// MARK: - Models
-
-/// Model to store a quote's information.
-/// - Parameters:
-///  - quoteText: The quote's text.
-///  - author: The quote's author.
-///  - dateAdded: The date the quote was added.
-///  - imageUrl: The URL of the image associated with the quote.
-/// - Returns: A new `Quote` instance.
-/// - Note: The `Decodable` protocol is used to facilitate JSON decoding.
-///
-struct Quote: Decodable {
-    /// The quote's text.
-    let quoteText: String
-    /// The quote's author.
-    let author: String
-    /// The date the quote was added.
-    let dateAdded: String
-    /// The URL of the image associated with the quote.
-    let imageUrl: String
-
-    /// Coding keys to map the JSON keys to the struct properties.
-    /// - Parameters:
-    ///  - quoteText: The quote's text.
-    ///  - author: The quote's author.
-    ///  - dateAdded: The date the quote was added.
-    ///  - imageUrl: The URL of the image associated with the quote.
-    private enum CodingKeys: String, CodingKey {
-        case quoteText = "quote_text"
-        case author
-        case dateAdded = "date_added"
-        case imageUrl = "image_url"
-    }
-}
-
-/// Encapsulates quotes array to facilitate JSON decoding.
-/// - Parameters:
-///  - quotes: The quotes array.
-/// - Returns: A new `Quotes` instance.
-struct Quotes: Decodable {
-    /// The quotes array.
-    let quotes: [Quote]
-}
-
 // MARK: - QuoteViewController
 
 /// Displays quotes in the app UI. Designed for macOS, not iOS.
 class QuoteViewController: NSViewController {
     // MARK: Properties
-
-    private enum QuoteLoadError: Error {
-        case missingResource(String)
-        case emptyResource(String)
-        case resourceTooLarge(String)
-        case noValidResources
-    }
-
-    private static let maxQuotesPerResource = 10_000
-    private static let maxResourceNameLength = 255
     private static let panelCornerRadius: CGFloat = 18
     private static let panelWidth: CGFloat = 300
     private static let panelHeight: CGFloat = 300
@@ -90,17 +36,6 @@ class QuoteViewController: NSViewController {
     private static let maxLogoSize: CGFloat = 112
     private static let logoToFontScaleFactor: CGFloat = 4.8
     private static let authorLabelHeight: CGFloat = 22
-    private static let cacheLock = NSLock()
-    private static var quotesCache = [String: [Quote]]()
-    private static var mergedQuotesCache: [Quote]?
-    private static var mergedSourceCountCache = 0
-    private static let decoder = JSONDecoder()
-    private static let fallbackQuote = Quote(
-        quoteText: "Quote not found",
-        author: "Author not found",
-        dateAdded: "Date not found",
-        imageUrl: "Image not found"
-    )
     static let fixedPopoverSize = NSSize(width: panelWidth, height: panelHeight)
 
     /// Scroll container for long quote rendering within fixed popup dimensions.
@@ -111,9 +46,6 @@ class QuoteViewController: NSViewController {
     var authorTextField = NSTextField()
     /// The button to open the Wiser One website.
     var button = NSButton()
-    private var activeResourceName = ""
-    private var activeQuotes = [Quote]()
-    private var activeQuoteIndex = 0
     private var logoWidthConstraint: NSLayoutConstraint?
     private var logoHeightConstraint: NSLayoutConstraint?
     private lazy var resourceBundle: Bundle = {
@@ -123,6 +55,7 @@ class QuoteViewController: NSViewController {
             Bundle.main
         #endif
     }()
+    private lazy var quoteService = QuoteService(repository: QuoteRepository(bundle: resourceBundle))
 
     // MARK: - View Lifecycle
 
@@ -172,6 +105,9 @@ class QuoteViewController: NSViewController {
         panel.blendingMode = .withinWindow
         panel.state = .followsWindowActiveState
         panel.appearance = nil
+        panel.wantsLayer = true
+        panel.layer?.cornerRadius = Self.panelCornerRadius
+        panel.layer?.masksToBounds = true
 
         view = panel
         preferredContentSize = Self.fixedPopoverSize
@@ -290,166 +226,9 @@ class QuoteViewController: NSViewController {
         return dayOfYear
     }
 
-    /// Retrieves the current daily quote from all discoverable quote JSON resources.
+    /// Retrieves and stores the current daily quote from discovered resources.
     private func getQuote() -> Quote {
-        do {
-            let (quotes, sourceCount) = try loadDiscoveredQuotes()
-            guard !quotes.isEmpty else {
-                return Self.fallbackQuote
-            }
-
-            let dayOfYear = getCurrentDayOfYear()
-            let boundedIndex = max(0, dayOfYear - 1) % quotes.count
-            activeResourceName = sourceCount == 1 ? "1 source file" : "\(sourceCount) source files"
-            activeQuotes = quotes
-            activeQuoteIndex = boundedIndex
-            return quotes[boundedIndex]
-        } catch {
-            print("Failed to discover any valid quote JSON resources.")
-            activeResourceName = ""
-            activeQuotes = []
-            activeQuoteIndex = 0
-            return Self.fallbackQuote
-        }
-    }
-
-    /// Discovers all JSON resources, loads valid quote files, and returns one merged ordered list.
-    private func loadDiscoveredQuotes() throws -> ([Quote], Int) {
-        if let cached = cachedMergedQuotes() {
-            return cached
-        }
-
-        let resources = discoverQuoteResources()
-        guard !resources.isEmpty else {
-            throw QuoteLoadError.noValidResources
-        }
-
-        var merged = [Quote]()
-        var validSourceCount = 0
-
-        for resource in resources {
-            do {
-                let quotes = try loadQuotes(named: resource.name, from: resource.url)
-                if !quotes.isEmpty {
-                    merged.append(contentsOf: quotes)
-                    validSourceCount += 1
-                }
-            } catch {
-                // Ignore non-quote or malformed JSON resources to support arbitrary filenames in the folder.
-                continue
-            }
-        }
-
-        guard !merged.isEmpty, validSourceCount > 0 else {
-            throw QuoteLoadError.noValidResources
-        }
-
-        let sortedMerged = sortQuotesByDate(merged)
-        storeMergedQuotes(sortedMerged, sourceCount: validSourceCount)
-        return (sortedMerged, validSourceCount)
-    }
-
-    /// Discovers JSON quote resources in deterministic order.
-    /// When duplicate basenames exist, `sources/resources` variants are preferred over `.xcassets`.
-    private func discoverQuoteResources() -> [(name: String, url: URL)] {
-        guard let resourceURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
-            return []
-        }
-
-        var selected = [String: URL]()
-
-        for url in resourceURLs {
-            let resourceName = url.deletingPathExtension().lastPathComponent
-            guard !resourceName.isEmpty, resourceName.count <= Self.maxResourceNameLength else {
-                continue
-            }
-
-            if let existingURL = selected[resourceName] {
-                if resourcePriority(for: url) > resourcePriority(for: existingURL) {
-                    selected[resourceName] = url
-                }
-            } else {
-                selected[resourceName] = url
-            }
-        }
-
-        return selected.keys.sorted().compactMap { name in
-            guard let url = selected[name] else { return nil }
-            return (name: name, url: url)
-        }
-    }
-
-    /// Gives precedence to quote resources under `resources` to keep runtime behavior stable.
-    private func resourcePriority(for url: URL) -> Int {
-        let path = url.path
-        if path.lowercased().contains("/resources/") {
-            return 2
-        }
-        if path.contains(".xcassets/") {
-            return 0
-        }
-        return 1
-    }
-
-    private func loadQuotes(named resourceName: String, from url: URL) throws -> [Quote] {
-        assert(!resourceName.isEmpty, "Resource name must not be empty.")
-        assert(resourceName.count <= Self.maxResourceNameLength, "Resource name exceeds safe bound.")
-        if let cached = cachedQuotes(for: resourceName) {
-            return cached
-        }
-
-        let jsonData = try Data(contentsOf: url, options: [.mappedIfSafe])
-        let decoded = try Self.decoder.decode(Quotes.self, from: jsonData)
-        guard !decoded.quotes.isEmpty else {
-            throw QuoteLoadError.emptyResource(resourceName)
-        }
-        guard decoded.quotes.count <= Self.maxQuotesPerResource else {
-            throw QuoteLoadError.resourceTooLarge(resourceName)
-        }
-
-        storeQuotes(decoded.quotes, for: resourceName)
-        return decoded.quotes
-    }
-
-    private func cachedQuotes(for resourceName: String) -> [Quote]? {
-        Self.cacheLock.lock()
-        defer { Self.cacheLock.unlock() }
-        return Self.quotesCache[resourceName]
-    }
-
-    private func storeQuotes(_ quotes: [Quote], for resourceName: String) {
-        assert(!quotes.isEmpty, "Quote cache stores non-empty quote arrays only.")
-        assert(quotes.count <= Self.maxQuotesPerResource, "Quote cache input exceeds maximum bound.")
-
-        Self.cacheLock.lock()
-        defer { Self.cacheLock.unlock() }
-        Self.quotesCache[resourceName] = quotes
-    }
-
-    private func cachedMergedQuotes() -> ([Quote], Int)? {
-        Self.cacheLock.lock()
-        defer { Self.cacheLock.unlock() }
-        guard let merged = Self.mergedQuotesCache else {
-            return nil
-        }
-        return (merged, Self.mergedSourceCountCache)
-    }
-
-    private func storeMergedQuotes(_ quotes: [Quote], sourceCount: Int) {
-        assert(!quotes.isEmpty, "Merged quote cache stores non-empty quote arrays only.")
-        assert(sourceCount > 0, "Merged quote cache source count must be positive.")
-        Self.cacheLock.lock()
-        defer { Self.cacheLock.unlock() }
-        Self.mergedQuotesCache = quotes
-        Self.mergedSourceCountCache = sourceCount
-    }
-
-    /// Mirrors the sister Rust project's stable-by-date ordering for loaded quote collections.
-    private func sortQuotesByDate(_ quotes: [Quote]) -> [Quote] {
-        assert(!quotes.isEmpty, "Sorting requires non-empty quote collections.")
-        return quotes.sorted { lhs, rhs in
-            lhs.dateAdded < rhs.dateAdded
-        }
+        quoteService.loadDailyQuote(dayOfYear: getCurrentDayOfYear())
     }
 
     /// Loads a popup logo with the same base asset preference as the menu bar icon.
@@ -498,20 +277,15 @@ class QuoteViewController: NSViewController {
     /// Advances to the next quote in the currently loaded collection.
     private func cycleToNextQuote(animated: Bool) {
         assert(Thread.isMainThread, "UI updates must run on the main thread.")
-        guard !activeQuotes.isEmpty else {
+        guard quoteService.hasLoadedQuotes else {
             loadDailyQuote()
             return
         }
 
-        let quoteCount = activeQuotes.count
-        guard quoteCount > 1 else {
-            renderQuote(activeQuotes[0], animated: animated)
+        guard let quote = quoteService.cycleToNextQuote() else {
+            loadDailyQuote()
             return
         }
-
-        activeQuoteIndex = (activeQuoteIndex + 1) % quoteCount
-        assert(activeQuoteIndex >= 0 && activeQuoteIndex < quoteCount, "Quote index must remain in bounds.")
-        let quote = activeQuotes[activeQuoteIndex]
         renderQuote(quote, animated: animated)
     }
 
@@ -574,7 +348,7 @@ class QuoteViewController: NSViewController {
     /// Refreshes quote selection for a menu bar icon click.
     func refreshForMenuBarClick() {
         assert(Thread.isMainThread, "UI updates must run on the main thread.")
-        if activeQuotes.isEmpty {
+        if !quoteService.hasLoadedQuotes {
             loadDailyQuote()
             return
         }

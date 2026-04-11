@@ -2,7 +2,7 @@
 set -eu
 
 zero_sha="0000000000000000000000000000000000000000"
-repo_root="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)"
 cd "$repo_root"
 
 verify_range() {
@@ -17,8 +17,6 @@ run_security_checks() {
     ./scripts/security/scan-security-patterns.sh
     ./scripts/security/scan-vulnerabilities.sh
     ./scripts/security/verify-macos-binary-signature.sh
-    ./scripts/security/generate-sbom.sh
-    ./scripts/security/generate-validation-record.sh
 }
 
 if [ "${1:-}" = "--no-stdin" ]; then
@@ -29,7 +27,7 @@ if [ "${1:-}" = "--no-stdin" ]; then
 fi
 
 saw_ref=0
-while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+while IFS=' ' read -r _ local_sha _ remote_sha; do
     if [ -z "${local_sha:-}" ]; then
         continue
     fi
