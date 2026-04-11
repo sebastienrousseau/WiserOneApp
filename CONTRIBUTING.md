@@ -1,81 +1,77 @@
-# Contributing to `wiserone`
+# Contributing
 
-Welcome! We're thrilled that you're interested in contributing to the
-`wiserone` library. Whether you're looking to evangelize, submit feedback,
-or contribute code, we appreciate your involvement in making `wiserone` a
-better tool for everyone. Here's how you can get started.
+Thanks for helping improve WiserOne.
 
-## Evangelize
+## Setup
 
-One of the simplest ways to help us out is by spreading the word about
-wiserone. We believe that a bigger, more involved community makes for a
-better framework, and that better frameworks make the world a better
-place. If you know people who might benefit from using wiserone, please
-let them know!
+```sh
+make init
+swift build
+make ci-local
+```
 
-## How to Contribute
+On macOS, launch the app with:
 
-If you're interested in making a more direct contribution, there are
-several ways you can help us improve wiserone. Here are some guidelines
-for submitting feedback, bug reports, and code contributions.
+```sh
+swift run WiserOne
+```
 
-### Feedback
+On Linux and WSL2, run core build and test only.
 
-Your feedback is incredibly valuable to us, and we're always looking for
-ways to make wiserone better. If you have ideas, suggestions, or questions
-about wiserone, we'd love to hear them. Here's how you can provide
-feedback:
+## Signed Commits
 
-- Click [here][2] to submit a new feedback.
-- Use a descriptive title that clearly summarizes your feedback.
-- Provide a detailed description of the issue or suggestion.
-- Be patient while we review and respond to your feedback.
+Configure Git signing:
 
-### Bug Reports
+```sh
+git config commit.gpgsign true
+git config tag.gpgSign true
+git config gpg.format ssh
+git config user.signingkey ~/.ssh/id_ed25519.pub
+```
 
-If you encounter a bug while using wiserone, please let us know so we can
-fix it. Here's how you can submit a bug report:
+Create signed commits:
 
-- Click [here][2] to submit a new issue.
-- Use a descriptive title that clearly summarizes the bug.
-- Provide a detailed description of the issue, including steps to
-  reproduce it.
-- Be patient while we review and respond to your bug report.
+```sh
+git commit -S -m "type: summary"
+```
 
-### Code Contributions
+CI validates commit signatures on every pull request.
 
-If you're interested in contributing code to wiserone, we're excited to
-have your help! Here's what you need to know:
+## Branch and PR Hygiene
 
-#### Feature Requests
+Use focused branches:
+- `feat/<name>`
+- `fix/<name>`
+- `docs/<name>`
 
-If you have an idea for a new feature or improvement, we'd love to hear
-it. Here's how you can contribute code for a new feature to wiserone:
+Open pull requests with:
+- clear title
+- short problem statement
+- short change summary
+- test evidence (`make ci-local` output)
 
-- Fork the repo.
-- Clone the wiserone[1] repo by running:
-  `git clone https://github.com/sebastienrousseau/WiserOneApp`
-- Edit files in the `Sources/` folder. The `Sources/` folder contains the source
-  code for wiserone.
-- Submit a pull request, and we'll review and merge your changes if they
-  fit with our vision for wiserone.
+Keep pull requests small and reviewable.
 
-#### Submitting Code
+## Code Guidelines
 
-If you've identified a bug or have a specific code improvement in mind,
-we welcome your pull requests. Here's how to submit your code changes:
+- Keep cross-platform logic in `sources/core`.
+- Keep macOS UI logic in app files under `sources/`.
+- Keep quote data loading logic in `QuoteRepository` and `QuoteService`.
+- Add core tests in `tests/core-tests`.
+- Add UI smoke tests in `tests/ui-tests`.
+- Prefer simple names and short functions.
+- Write comments that explain intent, not syntax.
 
-- Fork the repo.
-- Clone the wiserone repo by running:
-  `git clone https://github.com/sebastienrousseau/WiserOneApp`
-- Edit files in the `Sources/` folder. The `Sources/` folder contains the source
-  code for wiserone.
-- Submit a pull request, and we'll review and merge your changes if they
-  fit with our vision for wiserone.
+## Governance Artifacts
 
-We hope that this guide has been helpful in explaining how you can
-contribute to wiserone. Thank you for your interest and involvement in our
-project!
+Do not regenerate governance files in routine commits.
 
-[1]: https://github.com/sebastienrousseau/WiserOneApp
-[2]: https://github.com/sebastienrousseau/WiserOneApp/issues/new
+Use this only when the change requires updated governance records:
+
+```sh
+make governance-refresh
+```
+
+## Report Issues
+
+Open an issue: https://github.com/sebastienrousseau/WiserOneApp/issues/new

@@ -1,0 +1,32 @@
+{
+  "recordVersion": 1,
+  "project": "WiserOne",
+  "commit": {
+    "sha": "76cd1e0e1f91757f9dc7fa53fb3122763d0c75aa",
+    "shortSha": "76cd1e0",
+    "branch": "feat/v0.0.3",
+    "committedAt": "2026-04-11T13:56:16+01:00"
+  },
+  "controls": {
+    "signedCommits": "pass",
+    "dependencyChecksums": "pass",
+    "artifactChecksums": "pass",
+    "secretScan": "pass",
+    "automationPatternScan": "pass",
+    "vulnerabilityScanGuard": "pass",
+    "macOSBinarySignature": "pass",
+    "sbom": "pass",
+    "coreCoverage100": "pass"
+  },
+  "artifacts": {
+    "sbom": {
+      "path": "governance/sbom/cyclonedx-sbom.json",
+      "sha256": "117b69831ed838a9ab9657e8003bc4c08159de045a0a74da37e2d67e7ed4e43b"
+    },
+    "resourceChecksumManifest": {
+      "path": "governance/checksums/sha256sums.txt",
+      "sha256": "dc98502ba78cd9be38f5fd2fced5ee6a6b79d55171cb90943e6fe5fe90d053dc"
+    }
+  },
+  "procedure": "governance/compliance/software-validation-procedure.md"
+}

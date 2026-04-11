@@ -1,0 +1,24 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "component": {
+      "type": "application",
+      "name": "WiserOne",
+      "version": "76cd1e0",
+      "licenses": [
+        { "license": { "id": "MIT" } },
+        { "license": { "id": "Apache-2.0" } }
+      ]
+    }
+  },
+  "components": [
+    { "type": "library", "name": "WiserOneCore", "version": "76cd1e0" },
+    { "type": "application", "name": "WiserOne", "version": "76cd1e0" }
+  ],
+  "dependencies": [
+    { "ref": "WiserOne", "dependsOn": ["WiserOneCore"] },
+    { "ref": "WiserOneCore", "dependsOn": [] }
+  ]
+}
