@@ -60,11 +60,14 @@ final class QuoteRepository {
     }
 
     private func discoverQuoteResources() -> [(name: String, url: URL)] {
-        let directURLs = (resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
+        let rootURLs = (resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
             .map { $0 as URL }
-        let recursiveURLs = discoverQuoteResourcesRecursivelyIfNeeded(existingCount: directURLs.count)
+        let resourcesSubdirectoryURLs = (resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: "resources") ?? [])
+            .map { $0 as URL }
+        let recursiveURLs = discoverQuoteResourcesRecursively()
         var seenPaths = Set<String>()
-        let resourceURLs = (directURLs + recursiveURLs).filter { seenPaths.insert($0.path).inserted }
+        let resourceURLs = (rootURLs + resourcesSubdirectoryURLs + recursiveURLs)
+            .filter { seenPaths.insert($0.path).inserted }
 
         var selectedResources = [String: URL]()
 
@@ -89,12 +92,7 @@ final class QuoteRepository {
         }
     }
 
-    private func discoverQuoteResourcesRecursivelyIfNeeded(existingCount: Int) -> [URL] {
-        // Fast path: direct lookup is enough for normal SwiftPM bundle layouts.
-        if existingCount > 0 {
-            return []
-        }
-
+    private func discoverQuoteResourcesRecursively() -> [URL] {
         guard let rootURL = resourceBundle.resourceURL ?? resourceBundle.bundleURL as URL? else {
             return []
         }

@@ -59,9 +59,15 @@ enum ResourceBundleLocator {
         if bundle.url(forResource: quoteProbePrefix, withExtension: "json") != nil {
             return true
         }
+        if bundle.url(forResource: quoteProbePrefix, withExtension: "json", subdirectory: "resources") != nil {
+            return true
+        }
+
         let jsonURLs = (bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
             .map { $0 as URL }
-        if jsonURLs.contains(where: { $0.lastPathComponent.contains("-quotes.json") })
+        let resourcesJSONURLs = (bundle.urls(forResourcesWithExtension: "json", subdirectory: "resources") ?? [])
+            .map { $0 as URL }
+        if (jsonURLs + resourcesJSONURLs).contains(where: { $0.lastPathComponent.contains("-quotes.json") })
         {
             return true
         }

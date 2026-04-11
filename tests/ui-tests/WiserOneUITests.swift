@@ -36,6 +36,17 @@ final class WiserOneUITests: XCTestCase {
         XCTAssertNotEqual(sut.quoteTextView.string, initialQuote)
     }
 
+    func testRefreshBeforeViewLoadStillRendersQuote() {
+        let sut = QuoteViewController()
+
+        // Mirrors menu-bar refresh calls that can happen before explicit view access.
+        sut.refreshForMenuBarClick()
+        sut.viewWillAppear()
+
+        XCTAssertFalse(sut.quoteTextView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        XCTAssertFalse(sut.authorTextField.stringValue.isEmpty)
+    }
+
     func testAppDelegateInitializesStatusItemAndPopoverController() {
         let sut = AppDelegate()
 

@@ -70,8 +70,15 @@ class QuoteViewController: NSViewController {
     /// - Note: This method is called automatically when the view controller's view is about to be added to the view hierarchy.
     override func viewWillAppear() {
         super.viewWillAppear()
-        if quoteTextView.string.isEmpty {
+        if !quoteService.hasLoadedQuotes {
             loadDailyQuote()
+            return
+        }
+
+        if quoteTextView.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let activeQuote = quoteService.currentQuote()
+        {
+            renderQuote(activeQuote, animated: false)
         }
     }
 
@@ -150,8 +157,10 @@ class QuoteViewController: NSViewController {
         quoteTextView.drawsBackground = false
         quoteTextView.isEditable = false
         quoteTextView.isSelectable = true
+        quoteTextView.isRichText = false
+        quoteTextView.importsGraphics = false
         quoteTextView.font = NSFont.systemFont(ofSize: resolvedQuoteFontSize(), weight: .medium)
-        quoteTextView.textColor = NSColor.labelColor
+        quoteTextView.textColor = NSColor.textColor
         quoteTextView.textContainerInset = NSSize(width: 0, height: 2)
         quoteTextView.isHorizontallyResizable = false
         quoteTextView.isVerticallyResizable = true
@@ -165,6 +174,12 @@ class QuoteViewController: NSViewController {
         quoteTextView.textContainer?.heightTracksTextView = false
         quoteTextView.textContainer?.lineBreakMode = .byWordWrapping
         quoteTextView.textContainer?.maximumNumberOfLines = 0
+        quoteTextView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: Self.panelWidth - (Self.quoteHorizontalPadding * 2),
+            height: 1
+        )
 
         quoteScrollView.documentView = quoteTextView
         view.addSubview(quoteScrollView)
@@ -310,16 +325,37 @@ class QuoteViewController: NSViewController {
 
     /// Applies quote text with centered paragraph style and resets scroll position.
     private func applyQuoteText(_ text: String) {
+        assert(!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, "Quote text must not be blank.")
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.alignment = .center
         paragraphStyle.lineBreakMode = .byWordWrapping
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: NSFont.systemFont(ofSize: resolvedQuoteFontSize(), weight: .medium),
-            .foregroundColor: NSColor.labelColor,
+            .foregroundColor: NSColor.textColor,
             .paragraphStyle: paragraphStyle,
         ]
-        quoteTextView.textStorage?.setAttributedString(NSAttributedString(string: text, attributes: attributes))
+
+        let attributedText = NSAttributedString(string: text, attributes: attributes)
+        if let textStorage = quoteTextView.textStorage {
+            textStorage.setAttributedString(attributedText)
+        } else {
+            quoteTextView.string = text
+            quoteTextView.textColor = NSColor.textColor
+            quoteTextView.font = NSFont.systemFont(ofSize: resolvedQuoteFontSize(), weight: .medium)
+            quoteTextView.alignment = .center
+        }
+
+        if let textContainer = quoteTextView.textContainer,
+           let layoutManager = quoteTextView.layoutManager
+        {
+            layoutManager.ensureLayout(for: textContainer)
+            let usedRect = layoutManager.usedRect(for: textContainer)
+            let targetWidth = quoteScrollView.contentSize.width
+            let targetHeight = max(usedRect.height + (quoteTextView.textContainerInset.height * 2), quoteScrollView.contentSize.height)
+            quoteTextView.setFrameSize(NSSize(width: max(targetWidth, 1), height: max(targetHeight, 1)))
+        }
+
         if let scrollView = quoteTextView.enclosingScrollView {
             scrollView.contentView.scroll(to: NSPoint(x: 0, y: 0))
             scrollView.reflectScrolledClipView(scrollView.contentView)
@@ -342,6 +378,10 @@ class QuoteViewController: NSViewController {
     /// Refreshes quote selection for a menu bar icon click.
     func refreshForMenuBarClick() {
         assert(Thread.isMainThread, "UI updates must run on the main thread.")
+        if !isViewLoaded {
+            _ = view
+        }
+
         if !quoteService.hasLoadedQuotes {
             loadDailyQuote()
             return

@@ -50,6 +50,18 @@ final class QuoteService {
         return activeQuotes[activeQuoteIndex]
     }
 
+    func currentQuote() -> Quote? {
+        guard !activeQuotes.isEmpty else {
+            return nil
+        }
+
+        guard activeQuoteIndex >= 0 && activeQuoteIndex < activeQuotes.count else {
+            return nil
+        }
+
+        return activeQuotes[activeQuoteIndex]
+    }
+
     private func resetState() {
         sourceSummary = ""
         activeQuotes = []
