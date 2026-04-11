@@ -6,7 +6,7 @@
     "component": {
       "type": "application",
       "name": "WiserOne",
-      "version": "407b49c",
+      "version": "1f2f4bf",
       "licenses": [
         { "license": { "id": "MIT" } },
         { "license": { "id": "Apache-2.0" } }
@@ -14,8 +14,8 @@
     }
   },
   "components": [
-    { "type": "library", "name": "WiserOneCore", "version": "407b49c" },
-    { "type": "application", "name": "WiserOne", "version": "407b49c" }
+    { "type": "library", "name": "WiserOneCore", "version": "1f2f4bf" },
+    { "type": "application", "name": "WiserOne", "version": "1f2f4bf" }
   ],
   "dependencies": [
     { "ref": "WiserOne", "dependsOn": ["WiserOneCore"] },
