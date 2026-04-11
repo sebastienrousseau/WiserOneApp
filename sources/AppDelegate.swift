@@ -33,8 +33,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private static let minMenuIconSize: CGFloat = 12
     private static let maxMenuIconSize: CGFloat = 32
     private static let menuIconSize: CGFloat = 24
+    private static let maxStatusItemSetupAttempts = 10
+    private static let statusItemRetryDelay: TimeInterval = 0.2
 
     var statusBarItem: NSStatusItem?
+    private var statusItemSetupAttempts = 0
     private(set) lazy var statusItemContextMenu: NSMenu = {
         let menu = NSMenu(title: "WiserOne")
         let quitItem = NSMenuItem(
@@ -60,12 +63,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Called when the application has completed its launch setup.
     /// Initializes the status bar item and configures the popover.
     func applicationDidFinishLaunching(_: Notification) {
-        do {
-            try setupStatusBarItem()
-            setupPopover()
-        } catch {
-            handleError(error)
-        }
+        _ = NSApplication.shared.setActivationPolicy(.accessory)
+        setupPopover()
+        setupStatusBarItemWithRetry()
     }
 
     // MARK: - Status Bar Setup
@@ -73,12 +73,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Initializes and configures the status bar item.
     /// - Throws: `AppError.statusBarItemButtonNotAvailable` if unable to access the status bar item button.
     private func setupStatusBarItem() throws {
-        statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        if statusBarItem == nil {
+            statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        }
         statusBarItem?.isVisible = true
         guard let button = statusBarItem?.button else {
             throw AppError.statusBarItemButtonNotAvailable
         }
         configureButton(button)
+    }
+
+    /// Sets up the status item with bounded retries to avoid a silent launch state.
+    private func setupStatusBarItemWithRetry() {
+        assert(Thread.isMainThread, "Status item retries must run on the main thread.")
+        do {
+            try setupStatusBarItem()
+            statusItemSetupAttempts = 0
+        } catch {
+            statusItemSetupAttempts += 1
+            if statusItemSetupAttempts < Self.maxStatusItemSetupAttempts {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.statusItemRetryDelay) { [weak self] in
+                    self?.setupStatusBarItemWithRetry()
+                }
+                return
+            }
+            handleError(error)
+        }
     }
 
     /// Configures the status bar button with a custom icon and action.
