@@ -6,6 +6,9 @@ if [ "$(uname -s)" != "Darwin" ]; then
     exit 1
 fi
 
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+REPO_ROOT="$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)"
+
 usage() {
     cat <<'USAGE'
 Usage:
@@ -87,6 +90,10 @@ write_info_plist() {
     <string>6.0</string>
     <key>CFBundleName</key>
     <string>${WISERONE_APP_NAME}</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+    <key>CFBundleIconName</key>
+    <string>AppIcon</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
@@ -104,6 +111,130 @@ write_info_plist() {
 </dict>
 </plist>
 EOF
+}
+
+resolve_logo_svg() {
+    for candidate in \
+        "$REPO_ROOT/sources/resources/logo.svg" \
+        "$REPO_ROOT/sources/assets.xcassets/logo.imageset/logo.svg" \
+        "$REPO_ROOT/sources/assets.xcassets/logo.svg"
+    do
+        if [ -f "$candidate" ]; then
+            echo "$candidate"
+            return
+        fi
+    done
+    return 1
+}
+
+render_logo_png() {
+    logo_svg="$1"
+    output_png="$2"
+
+    swift - "$logo_svg" "$output_png" <<'SWIFT'
+import AppKit
+import Foundation
+
+let args = CommandLine.arguments
+guard args.count == 3 else {
+    fputs("Invalid icon render arguments.\n", stderr)
+    exit(1)
+}
+
+let sourceURL = URL(fileURLWithPath: args[1])
+let destinationURL = URL(fileURLWithPath: args[2])
+let size = CGSize(width: 1024, height: 1024)
+
+guard let image = NSImage(contentsOf: sourceURL) else {
+    fputs("Failed to load SVG logo.\n", stderr)
+    exit(1)
+}
+
+guard let rep = NSBitmapImageRep(
+    bitmapDataPlanes: nil,
+    pixelsWide: Int(size.width),
+    pixelsHigh: Int(size.height),
+    bitsPerSample: 8,
+    samplesPerPixel: 4,
+    hasAlpha: true,
+    isPlanar: false,
+    colorSpaceName: .deviceRGB,
+    bytesPerRow: 0,
+    bitsPerPixel: 0
+) else {
+    fputs("Failed to allocate bitmap for icon rendering.\n", stderr)
+    exit(1)
+}
+
+NSGraphicsContext.saveGraphicsState()
+if let context = NSGraphicsContext(bitmapImageRep: rep) {
+    NSGraphicsContext.current = context
+    NSColor.clear.setFill()
+    NSBezierPath(rect: CGRect(origin: .zero, size: size)).fill()
+    image.draw(in: CGRect(origin: .zero, size: size), from: .zero, operation: .sourceOver, fraction: 1.0)
+}
+NSGraphicsContext.restoreGraphicsState()
+
+guard let pngData = rep.representation(using: .png, properties: [:]) else {
+    fputs("Failed to export PNG icon.\n", stderr)
+    exit(1)
+}
+
+do {
+    try pngData.write(to: destinationURL)
+} catch {
+    fputs("Failed to write PNG icon: \(error)\n", stderr)
+    exit(1)
+}
+SWIFT
+}
+
+build_icns_from_logo() {
+    output_icns="$1"
+    tmp_icon_dir="$(mktemp -d "${TMPDIR:-/tmp}/wiserone-icon.XXXXXX")"
+    iconset_dir="$tmp_icon_dir/AppIcon.iconset"
+    master_png="$tmp_icon_dir/logo-1024.png"
+
+    trap 'rm -rf "$tmp_icon_dir"' EXIT INT TERM
+
+    mkdir -p "$iconset_dir"
+
+    logo_svg="$(resolve_logo_svg || true)"
+    if [ -n "$logo_svg" ]; then
+        if ! render_logo_png "$logo_svg" "$master_png"; then
+            echo "Warning: SVG icon render failed, falling back to app iconset PNG." >&2
+        fi
+    fi
+
+    if [ ! -f "$master_png" ]; then
+        fallback_png="$REPO_ROOT/sources/assets.xcassets/AppIcon.appiconset/512x512@2x.png"
+        if [ ! -f "$fallback_png" ]; then
+            echo "No icon source available for app bundle." >&2
+            exit 1
+        fi
+        cp "$fallback_png" "$master_png"
+    fi
+
+    for spec in \
+        "16 icon_16x16.png" \
+        "32 icon_16x16@2x.png" \
+        "32 icon_32x32.png" \
+        "64 icon_32x32@2x.png" \
+        "128 icon_128x128.png" \
+        "256 icon_128x128@2x.png" \
+        "256 icon_256x256.png" \
+        "512 icon_256x256@2x.png" \
+        "512 icon_512x512.png" \
+        "1024 icon_512x512@2x.png"
+    do
+        size="${spec%% *}"
+        filename="${spec#* }"
+        sips -s format png -z "$size" "$size" "$master_png" --out "$iconset_dir/$filename" >/dev/null
+    done
+
+    iconutil -c icns "$iconset_dir" -o "$output_icns"
+    rm -rf "$tmp_icon_dir"
+    trap - EXIT INT TERM
 }
 
 build_app_bundle() {
@@ -126,6 +257,7 @@ build_app_bundle() {
         exit 1
     fi
 
+    build_icns_from_logo "$APP_PATH/Contents/Resources/AppIcon.icns"
     write_info_plist
 }
 
@@ -211,6 +343,8 @@ require_command ditto
 require_command productbuild
 require_command pkgutil
 require_command spctl
+require_command sips
+require_command iconutil
 
 CHANNEL="${1:-}"
 if [ -z "$CHANNEL" ]; then

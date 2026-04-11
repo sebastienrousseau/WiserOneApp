@@ -13,6 +13,8 @@ DIST_DIR="${WISERONE_DIST_DIR:-dist}"
 MAINTAINER="${WISERONE_MAINTAINER:-Sebastien Rousseau <sebastien@wiserone.com>}"
 URL="${WISERONE_URL:-https://github.com/sebastienrousseau/WiserOneApp}"
 DESCRIPTION="${WISERONE_DESCRIPTION:-Daily quotes app package payload for Linux distributions.}"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
+REPO_ROOT="$(CDPATH='' cd -- "$SCRIPT_DIR/../.." && pwd)"
 
 require_command() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -44,6 +46,35 @@ write_launcher() {
 exec /opt/${PACKAGE_NAME}/${PRODUCT_NAME} "\$@"
 LAUNCHER
     chmod 755 "$launcher_path"
+}
+
+resolve_logo_svg() {
+    for candidate in \
+        "$REPO_ROOT/sources/resources/logo.svg" \
+        "$REPO_ROOT/sources/assets.xcassets/logo.imageset/logo.svg" \
+        "$REPO_ROOT/sources/assets.xcassets/logo.svg"
+    do
+        if [ -f "$candidate" ]; then
+            echo "$candidate"
+            return
+        fi
+    done
+    return 1
+}
+
+write_desktop_entry() {
+    desktop_file_path="$1"
+    cat >"$desktop_file_path" <<DESKTOP
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=WiserOne
+Comment=Daily quotes
+Exec=/usr/bin/${PACKAGE_NAME}
+Icon=${PACKAGE_NAME}
+Terminal=true
+Categories=Utility;
+DESKTOP
 }
 
 build_deb() {
@@ -117,6 +148,8 @@ cp -a usr %{buildroot}/
 /opt/${PACKAGE_NAME}
 /usr/bin/${PACKAGE_NAME}
 /usr/share/doc/${PACKAGE_NAME}
+/usr/share/applications/${PACKAGE_NAME}.desktop
+/usr/share/icons/hicolor/scalable/apps/${PACKAGE_NAME}.svg
 
 %changelog
 * $(LC_ALL=C date '+%a %b %d %Y') ${MAINTAINER} - ${VERSION}-1
@@ -193,7 +226,9 @@ stage_root="$tmp_dir/stage"
 mkdir -p \
     "$stage_root/opt/${PACKAGE_NAME}" \
     "$stage_root/usr/bin" \
-    "$stage_root/usr/share/doc/${PACKAGE_NAME}"
+    "$stage_root/usr/share/doc/${PACKAGE_NAME}" \
+    "$stage_root/usr/share/applications" \
+    "$stage_root/usr/share/icons/hicolor/scalable/apps"
 
 cp "$BIN_PATH" "$stage_root/opt/${PACKAGE_NAME}/${PRODUCT_NAME}"
 chmod 755 "$stage_root/opt/${PACKAGE_NAME}/${PRODUCT_NAME}"
@@ -205,7 +240,15 @@ for candidate in "$BIN_DIR"/*.bundle "$BIN_DIR"/*.resources; do
 done
 
 write_launcher "$stage_root/usr/bin/${PACKAGE_NAME}"
+write_desktop_entry "$stage_root/usr/share/applications/${PACKAGE_NAME}.desktop"
 cp README.md "$stage_root/usr/share/doc/${PACKAGE_NAME}/README.md"
+
+logo_svg="$(resolve_logo_svg || true)"
+if [ -z "$logo_svg" ]; then
+    echo "No SVG logo found for Linux package icon." >&2
+    exit 1
+fi
+cp "$logo_svg" "$stage_root/usr/share/icons/hicolor/scalable/apps/${PACKAGE_NAME}.svg"
 
 DEB_PATH="$DIST_DIR/${PACKAGE_NAME}_${VERSION}_${deb_arch}.deb"
 RPM_PATH="$DIST_DIR/${PACKAGE_NAME}-${VERSION}-1.${rpm_arch}.rpm"
