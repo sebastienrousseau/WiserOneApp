@@ -60,13 +60,11 @@ final class QuoteRepository {
     }
 
     private func discoverQuoteResources() -> [(name: String, url: URL)] {
-        let directURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
+        let directURLs = (resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? [])
+            .map { $0 as URL }
         let recursiveURLs = discoverQuoteResourcesRecursivelyIfNeeded(existingCount: directURLs.count)
-        let resourceURLs = Array((directURLs + recursiveURLs).reduce(into: [URL]()) { urls, url in
-            if !urls.contains(url) {
-                urls.append(url)
-            }
-        })
+        var seenPaths = Set<String>()
+        let resourceURLs = (directURLs + recursiveURLs).filter { seenPaths.insert($0.path).inserted }
 
         var selectedResources = [String: URL]()
 
