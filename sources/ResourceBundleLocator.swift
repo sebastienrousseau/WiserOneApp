@@ -5,21 +5,29 @@ import Foundation
 enum ResourceBundleLocator {
     private static let moduleBundleName = "WiserOne_WiserOne"
     private static let moduleBundleExtensions = ["bundle", "resources"]
+    private static let quoteProbePrefix = "01-quotes"
 
     static func resolve() -> Bundle {
         let mainBundle = Bundle.main
+        var firstCandidateBundle: Bundle?
         for url in candidateBundleURLs(mainBundle: mainBundle) {
             if let bundle = Bundle(url: url) {
-                return bundle
+                if firstCandidateBundle == nil {
+                    firstCandidateBundle = bundle
+                }
+                if isLikelyResourceBundle(bundle) {
+                    return bundle
+                }
             }
         }
-        return mainBundle
+        return firstCandidateBundle ?? mainBundle
     }
 
     private static func candidateBundleURLs(mainBundle: Bundle) -> [URL] {
         var searchRoots: [URL] = [
             mainBundle.bundleURL,
             mainBundle.resourceURL,
+            mainBundle.bundleURL.appendingPathComponent("Contents/Resources", isDirectory: true),
             mainBundle.bundleURL.deletingLastPathComponent(),
             mainBundle.executableURL?.deletingLastPathComponent(),
         ].compactMap { $0 }
@@ -45,6 +53,18 @@ enum ResourceBundleLocator {
         }
 
         return urls
+    }
+
+    private static func isLikelyResourceBundle(_ bundle: Bundle) -> Bool {
+        if bundle.url(forResource: quoteProbePrefix, withExtension: "json") != nil {
+            return true
+        }
+        if let urls = bundle.urls(forResourcesWithExtension: "json", subdirectory: nil),
+           urls.contains(where: { $0.lastPathComponent.contains("-quotes.json") })
+        {
+            return true
+        }
+        return false
     }
 }
 #endif

@@ -11,6 +11,7 @@ enum QuoteLoadError: Error {
 final class QuoteRepository {
     private static let maxQuotesPerResource = 10_000
     private static let maxResourceNameLength = 255
+    private static let maxRecursiveResourceScan = 2_048
     private static let decoder = JSONDecoder()
 
     private let resourceBundle: Bundle
@@ -59,10 +60,13 @@ final class QuoteRepository {
     }
 
     private func discoverQuoteResources() -> [(name: String, url: URL)] {
-        guard let discoveredURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else {
-            return []
-        }
-        let resourceURLs = discoveredURLs.map { $0 as URL }
+        let directURLs = resourceBundle.urls(forResourcesWithExtension: "json", subdirectory: nil) ?? []
+        let recursiveURLs = discoverQuoteResourcesRecursivelyIfNeeded(existingCount: directURLs.count)
+        let resourceURLs = Array((directURLs + recursiveURLs).reduce(into: [URL]()) { urls, url in
+            if !urls.contains(url) {
+                urls.append(url)
+            }
+        })
 
         var selectedResources = [String: URL]()
 
@@ -85,6 +89,41 @@ final class QuoteRepository {
             guard let url = selectedResources[name] else { return nil }
             return (name: name, url: url)
         }
+    }
+
+    private func discoverQuoteResourcesRecursivelyIfNeeded(existingCount: Int) -> [URL] {
+        // Fast path: direct lookup is enough for normal SwiftPM bundle layouts.
+        if existingCount > 0 {
+            return []
+        }
+
+        guard let rootURL = resourceBundle.resourceURL ?? resourceBundle.bundleURL as URL? else {
+            return []
+        }
+
+        var urls = [URL]()
+        let keys: Set<URLResourceKey> = [.isRegularFileKey, .isDirectoryKey]
+        guard let enumerator = FileManager.default.enumerator(
+            at: rootURL,
+            includingPropertiesForKeys: Array(keys),
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        for case let fileURL as URL in enumerator {
+            if urls.count >= Self.maxRecursiveResourceScan {
+                break
+            }
+
+            if fileURL.pathExtension.lowercased() != "json" {
+                continue
+            }
+
+            urls.append(fileURL)
+        }
+
+        return urls
     }
 
     private func resourcePriority(for url: URL) -> Int {
