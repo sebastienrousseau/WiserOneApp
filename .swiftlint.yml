@@ -73,3 +73,6 @@ identifier_name:
     error: 60
   min_length:
     warning: 1
+type_body_length:
+  warning: 450
+  error: 600
