@@ -6,7 +6,7 @@ cd "$repo_root"
 
 failed=0
 set -- README.md CONTRIBUTING.md
-for doc_file in docs/*.md; do
+for doc_file in doc/*.md; do
     [ -f "$doc_file" ] || continue
     set -- "$@" "$doc_file"
 done

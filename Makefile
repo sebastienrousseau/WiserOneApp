@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-.PHONY: init build clean test test-all test-unit test-ui test-coverage lint shell-lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record governance-refresh security portability docs-check content-integrity hygiene install-hooks prepush-check ci-local release-github release-appstore release-macos-artifacts release-linux-packages
+.PHONY: init build clean test test-all test-unit test-ui test-coverage lint shell-lint verify-signatures verify-checksums update-checksums verify-dependency-checksums scan-secrets scan-security-patterns scan-vulnerabilities verify-binary-signature sbom generate-validation-record governance-refresh security portability docs-check content-integrity verify-corpus hygiene install-hooks prepush-check ci-local release-github release-appstore release-macos-artifacts release-linux-packages
 
 init:
 	./scripts/bootstrap/init.sh
@@ -13,6 +13,13 @@ clean:
 
 test:
 	./scripts/quality/test-with-coverage.sh 100
+
+# Coverage over the whole app, split by testability. The core-only gate
+# above reports 100% while measuring seven lines; this one measures all
+# of sources/. macOS only: AppDelegate and QuoteViewController are
+# behind `#if canImport(Cocoa)` and compile to nothing on Linux.
+test-coverage-scopes:
+	./scripts/quality/check-coverage-scopes.sh
 
 test-all: test test-ui
 
@@ -79,7 +86,10 @@ docs-check:
 content-integrity:
 	./scripts/quality/verify-content-integrity.sh
 
-hygiene: portability docs-check shell-lint
+verify-corpus:
+	./scripts/quality/verify-corpus.sh
+
+hygiene: portability docs-check shell-lint verify-corpus
 
 install-hooks:
 	./scripts/bootstrap/install-hooks.sh

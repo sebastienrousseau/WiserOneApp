@@ -25,8 +25,12 @@ class ErrorLogger {
     static let shared = ErrorLogger()
     private static let maxLogEntryLength = 8_192
     private let fileManager = FileManager.default
+    private let logURLOverride: URL?
     private lazy var logURL: URL? = {
-        fileManager.urls(for: .documentDirectory, in: .userDomainMask)
+        if let logURLOverride {
+            return logURLOverride
+        }
+        return fileManager.urls(for: .documentDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("appLog.txt")
     }()
@@ -38,7 +42,18 @@ class ErrorLogger {
         return formatter
     }()
 
-    private init() {}
+    private init() {
+        logURLOverride = nil
+    }
+
+    /// Creates a logger writing somewhere other than the user's
+    /// Documents directory.
+    ///
+    /// Exists so the logging path can be tested without appending to a
+    /// real `~/Documents/appLog.txt`. Production code uses `shared`.
+    init(logURL: URL) {
+        logURLOverride = logURL
+    }
 
     /// Logs an error with detailed information including timestamp, error code, message, file, and method.
     /// - Parameters:

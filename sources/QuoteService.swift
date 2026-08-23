@@ -1,5 +1,6 @@
 #if canImport(Foundation)
 import Foundation
+import WiserOneCore
 
 /// Stateful quote selection service used by the UI.
 final class QuoteService {
@@ -17,7 +18,7 @@ final class QuoteService {
         !activeQuotes.isEmpty
     }
 
-    func loadDailyQuote(dayOfYear: Int) -> Quote {
+    func loadDailyQuote(dayNumber: Int) -> Quote {
         do {
             let (quotes, sourceCount) = try repository.loadDiscoveredQuotes()
             guard !quotes.isEmpty else {
@@ -25,7 +26,12 @@ final class QuoteService {
                 return Quote.fallback
             }
 
-            let boundedIndex = max(0, dayOfYear - 1) % quotes.count
+            guard let boundedIndex = QuoteRotation.index(
+                forDayNumber: dayNumber, poolSize: quotes.count
+            ) else {
+                resetState()
+                return Quote.fallback
+            }
             sourceSummary = sourceCount == 1 ? "1 source file" : "\(sourceCount) source files"
             activeQuotes = quotes
             activeQuoteIndex = boundedIndex

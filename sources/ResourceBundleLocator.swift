@@ -5,7 +5,10 @@ import Foundation
 enum ResourceBundleLocator {
     private static let moduleBundleName = "WiserOne_WiserOne"
     private static let moduleBundleExtensions = ["bundle", "resources"]
-    private static let quoteProbePrefix = "01-quotes"
+    /// Basename probed to recognise the resource bundle. The corpus is a
+    /// single `quotes.json` pool; it used to be twelve `NN-quotes.json`
+    /// files, and this probed for `01-quotes`.
+    private static let quoteProbePrefix = "quotes"
 
     static func resolve() -> Bundle {
         let mainBundle = Bundle.main
@@ -55,7 +58,14 @@ enum ResourceBundleLocator {
         return urls
     }
 
-    private static func isLikelyResourceBundle(_ bundle: Bundle) -> Bool {
+    /// Internal rather than private so a test can exercise it directly.
+    ///
+    /// Testing through `resolve()` does not guard this: when the probe
+    /// is wrong, `resolve()` falls through to `firstCandidateBundle`,
+    /// which in the SwiftPM test layout happens to be the right bundle
+    /// anyway. The probe can be completely broken and every test still
+    /// passes — which is what happened when the corpus was renamed.
+    static func isLikelyResourceBundle(_ bundle: Bundle) -> Bool {
         if bundle.url(forResource: quoteProbePrefix, withExtension: "json") != nil {
             return true
         }
@@ -67,7 +77,11 @@ enum ResourceBundleLocator {
             .map { $0 as URL }
         let resourcesJSONURLs = (bundle.urls(forResourcesWithExtension: "json", subdirectory: "resources") ?? [])
             .map { $0 as URL }
-        if (jsonURLs + resourcesJSONURLs).contains(where: { $0.lastPathComponent.contains("-quotes.json") })
+        // hasSuffix, not contains("-quotes.json"): the pool file is named
+        // `quotes.json` with no prefix, so the old substring test matched
+        // nothing and the locator fell through to the wrong bundle. This
+        // still accepts the legacy `NN-quotes.json` names.
+        if (jsonURLs + resourcesJSONURLs).contains(where: { $0.lastPathComponent.hasSuffix("quotes.json") })
         {
             return true
         }

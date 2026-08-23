@@ -71,6 +71,14 @@ jobs:
       - name: Test and Coverage
         run: make test
 
+      # Whole-app coverage, gated separately for logic and UI. Only on
+      # macOS: the AppKit sources are behind `#if canImport(Cocoa)` and
+      # measure as nothing on Linux, so a shared threshold would compare
+      # two different codebases.
+      - name: Coverage by scope
+        if: runner.os == 'macOS'
+        run: make test-coverage-scopes
+
       - name: Hygiene Gate
         run: make hygiene
 

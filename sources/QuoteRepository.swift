@@ -5,6 +5,9 @@ enum QuoteLoadError: Error {
     case emptyResource(String)
     case resourceTooLarge(String)
     case noValidResources
+    /// Some quotes carry no `id`, so pool order — and therefore which
+    /// quote a given day maps to — no longer matches wiserone.com.
+    case unorderedCorpus(Int)
 }
 
 /// Resource discovery and decoding for quote JSON payloads.
@@ -17,13 +20,22 @@ final class QuoteRepository {
     private let resourceBundle: Bundle
     private let cache: QuoteCache
 
+    /// Cache partition for this repository's bundle.
+    ///
+    /// The identifier is absent for a plain resource bundle, so the
+    /// path is the fallback — it is stable for the lifetime of the
+    /// process and unique per bundle, which is all the key needs to be.
+    var cacheScope: String {
+        resourceBundle.bundleIdentifier ?? resourceBundle.bundleURL.path
+    }
+
     init(bundle: Bundle, cache: QuoteCache = .shared) {
         resourceBundle = bundle
         self.cache = cache
     }
 
     func loadDiscoveredQuotes() throws -> ([Quote], Int) {
-        if let cached = cache.cachedMergedQuotes() {
+        if let cached = cache.cachedMergedQuotes(in: cacheScope) {
             return cached
         }
 
@@ -52,10 +64,33 @@ final class QuoteRepository {
             throw QuoteLoadError.noValidResources
         }
 
-        let sortedQuotes = mergedQuotes.sorted { lhs, rhs in
-            lhs.dateAdded < rhs.dateAdded
+        // Order by pool position, not by date_added. Sorting on the date
+        // was right when the corpus was twelve month-files merged in
+        // arbitrary order. It is wrong now: date_added records the day a
+        // line was written, so sorting on it scrambles the pool relative
+        // to wiserone.com and the two show different quotes on the same
+        // day. Entries without an id sort last, keeping any legacy file
+        // usable rather than throwing.
+        // Entries without an id sort last and keep the corpus usable,
+        // but they also mean this app and wiserone.com no longer agree on
+        // which quote a day maps to — the exact failure that shipped
+        // when ordering was by date_added. Say so rather than silently
+        // diverging.
+        let missingIds = mergedQuotes.filter { $0.id == nil }.count
+        if missingIds > 0 {
+            ErrorLogger.shared.logError(
+                QuoteLoadError.unorderedCorpus(missingIds)
+            )
         }
-        cache.storeMergedQuotes(sortedQuotes, sourceCount: validSourceCount)
+
+        let sortedQuotes = mergedQuotes.sorted { lhs, rhs in
+            let left = lhs.id ?? Int.max
+            let right = rhs.id ?? Int.max
+            return left == right ? lhs.dateAdded < rhs.dateAdded : left < right
+        }
+        cache.storeMergedQuotes(
+            sortedQuotes, sourceCount: validSourceCount, in: cacheScope
+        )
         return (sortedQuotes, validSourceCount)
     }
 
@@ -137,7 +172,7 @@ final class QuoteRepository {
         assert(!resourceName.isEmpty, "Resource name must not be empty.")
         assert(resourceName.count <= Self.maxResourceNameLength, "Resource name exceeds safe bound.")
 
-        if let cached = cache.cachedQuotes(for: resourceName) {
+        if let cached = cache.cachedQuotes(for: resourceName, in: cacheScope) {
             return cached
         }
 
@@ -152,7 +187,7 @@ final class QuoteRepository {
             throw QuoteLoadError.resourceTooLarge(resourceName)
         }
 
-        cache.storeQuotes(decoded.quotes, for: resourceName)
+        cache.storeQuotes(decoded.quotes, for: resourceName, in: cacheScope)
         return decoded.quotes
     }
 }

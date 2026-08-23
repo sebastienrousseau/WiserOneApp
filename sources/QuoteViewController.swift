@@ -19,6 +19,7 @@
 
 #if canImport(Cocoa)
 import Cocoa
+import WiserOneCore
 
 // MARK: - QuoteViewController
 
@@ -130,6 +131,11 @@ class QuoteViewController: NSViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.target = self
         button.action = #selector(buttonClicked)
+        // The button is an image with no title, so VoiceOver had nothing
+        // to announce and no way to say what activating it does.
+        button.setAccessibilityLabel("The Wiser One")
+        button.setAccessibilityHelp("Opens wiserone.com in your browser")
+        button.setAccessibilityRole(.button)
         view.addSubview(button)
 
         logoWidthConstraint = button.widthAnchor.constraint(equalToConstant: logoSize)
@@ -229,16 +235,25 @@ class QuoteViewController: NSViewController {
 
     // MARK: - Data Handling
 
-    /// Retrieves the current day-of-year (1...366) for stable daily quote selection.
-    private func getCurrentDayOfYear() -> Int {
-        let dayOfYear = Calendar.autoupdatingCurrent.ordinality(of: .day, in: .year, for: Date()) ?? 1
-        assert(dayOfYear >= 1, "Day-of-year must be at least 1.")
-        return dayOfYear
+    /// Days elapsed since 0001-01-01, the ordinal wiserone.com selects on.
+    ///
+    /// This used to be day-of-year (1...366), which broke the rotation in
+    /// two ways. It resets every January, so with a 136-quote pool and
+    /// 365 % 136 == 93, the first 93 quotes surfaced twice a year and the
+    /// rest once. And the reset itself is a jump: 31 December ran to the
+    /// end of a cycle, 1 January restarted at the first quote.
+    ///
+    /// A continuous count fixes both, and matching the website's epoch —
+    /// Python's `date.toordinal()`, where 1970-01-01 is 719163 — means the
+    /// app and the site show the same quote on the same day, given the
+    /// same pool in the same order.
+    private func currentDayNumber() -> Int {
+        QuoteRotation.dayNumber()
     }
 
     /// Retrieves and stores the current daily quote from discovered resources.
     private func getQuote() -> Quote {
-        quoteService.loadDailyQuote(dayOfYear: getCurrentDayOfYear())
+        quoteService.loadDailyQuote(dayNumber: currentDayNumber())
     }
 
     /// Loads a popup logo with the same base asset preference as the menu bar icon.
@@ -319,9 +334,36 @@ class QuoteViewController: NSViewController {
             authorTextField.alphaValue = 1
         }
 
+        announceForAccessibility(quote)
+
         assert(!quoteTextView.string.isEmpty, "Quote text should not render as an empty string.")
         assert(!authorTextField.stringValue.isEmpty, "Quote author should not render as an empty string.")
         enforceFixedPopoverSize()
+    }
+
+    /// Exposes the quote to VoiceOver as one utterance.
+    ///
+    /// The quote and its attribution live in two sibling views, so a
+    /// screen reader announced them as unrelated fragments — and the
+    /// scroll view around the text reported itself as an empty group.
+    /// This gives the pair a single label, and announces it when the
+    /// quote changes so a reader who never moves focus still hears it.
+    private func announceForAccessibility(_ quote: Quote) {
+        let spoken = "\(quote.quoteText) — \(quote.author)"
+
+        quoteScrollView.setAccessibilityElement(true)
+        quoteScrollView.setAccessibilityRole(.staticText)
+        quoteScrollView.setAccessibilityLabel("Quote of the day")
+        quoteScrollView.setAccessibilityValue(spoken)
+
+        quoteTextView.setAccessibilityLabel(spoken)
+        authorTextField.setAccessibilityLabel("Attributed to \(quote.author)")
+        view.setAccessibilityLabel(spoken)
+
+        NSAccessibility.post(
+            element: quoteScrollView,
+            notification: .valueChanged
+        )
     }
 
     /// Applies quote text with centered paragraph style and resets scroll position.
