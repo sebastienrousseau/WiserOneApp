@@ -52,8 +52,17 @@ final class QuoteRepository {
             throw QuoteLoadError.noValidResources
         }
 
+        // Order by pool position, not by date_added. Sorting on the date
+        // was right when the corpus was twelve month-files merged in
+        // arbitrary order. It is wrong now: date_added records the day a
+        // line was written, so sorting on it scrambles the pool relative
+        // to wiserone.com and the two show different quotes on the same
+        // day. Entries without an id sort last, keeping any legacy file
+        // usable rather than throwing.
         let sortedQuotes = mergedQuotes.sorted { lhs, rhs in
-            lhs.dateAdded < rhs.dateAdded
+            let left = lhs.id ?? Int.max
+            let right = rhs.id ?? Int.max
+            return left == right ? lhs.dateAdded < rhs.dateAdded : left < right
         }
         cache.storeMergedQuotes(sortedQuotes, sourceCount: validSourceCount)
         return (sortedQuotes, validSourceCount)

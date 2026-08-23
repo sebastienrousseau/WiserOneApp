@@ -17,7 +17,7 @@ final class QuoteService {
         !activeQuotes.isEmpty
     }
 
-    func loadDailyQuote(dayOfYear: Int) -> Quote {
+    func loadDailyQuote(dayNumber: Int) -> Quote {
         do {
             let (quotes, sourceCount) = try repository.loadDiscoveredQuotes()
             guard !quotes.isEmpty else {
@@ -25,7 +25,9 @@ final class QuoteService {
                 return Quote.fallback
             }
 
-            let boundedIndex = max(0, dayOfYear - 1) % quotes.count
+            // Floored modulo: a negative day number would otherwise give a
+            // negative index and trap on subscript.
+            let boundedIndex = ((dayNumber % quotes.count) + quotes.count) % quotes.count
             sourceSummary = sourceCount == 1 ? "1 source file" : "\(sourceCount) source files"
             activeQuotes = quotes
             activeQuoteIndex = boundedIndex
