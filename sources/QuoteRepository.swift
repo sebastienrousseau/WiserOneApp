@@ -5,6 +5,9 @@ enum QuoteLoadError: Error {
     case emptyResource(String)
     case resourceTooLarge(String)
     case noValidResources
+    /// Some quotes carry no `id`, so pool order — and therefore which
+    /// quote a given day maps to — no longer matches wiserone.com.
+    case unorderedCorpus(Int)
 }
 
 /// Resource discovery and decoding for quote JSON payloads.
@@ -59,6 +62,18 @@ final class QuoteRepository {
         // to wiserone.com and the two show different quotes on the same
         // day. Entries without an id sort last, keeping any legacy file
         // usable rather than throwing.
+        // Entries without an id sort last and keep the corpus usable,
+        // but they also mean this app and wiserone.com no longer agree on
+        // which quote a day maps to — the exact failure that shipped
+        // when ordering was by date_added. Say so rather than silently
+        // diverging.
+        let missingIds = mergedQuotes.filter { $0.id == nil }.count
+        if missingIds > 0 {
+            ErrorLogger.shared.logError(
+                QuoteLoadError.unorderedCorpus(missingIds)
+            )
+        }
+
         let sortedQuotes = mergedQuotes.sorted { lhs, rhs in
             let left = lhs.id ?? Int.max
             let right = rhs.id ?? Int.max

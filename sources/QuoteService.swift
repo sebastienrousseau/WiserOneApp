@@ -1,5 +1,6 @@
 #if canImport(Foundation)
 import Foundation
+import WiserOneCore
 
 /// Stateful quote selection service used by the UI.
 final class QuoteService {
@@ -25,9 +26,12 @@ final class QuoteService {
                 return Quote.fallback
             }
 
-            // Floored modulo: a negative day number would otherwise give a
-            // negative index and trap on subscript.
-            let boundedIndex = ((dayNumber % quotes.count) + quotes.count) % quotes.count
+            guard let boundedIndex = QuoteRotation.index(
+                forDayNumber: dayNumber, poolSize: quotes.count
+            ) else {
+                resetState()
+                return Quote.fallback
+            }
             sourceSummary = sourceCount == 1 ? "1 source file" : "\(sourceCount) source files"
             activeQuotes = quotes
             activeQuoteIndex = boundedIndex

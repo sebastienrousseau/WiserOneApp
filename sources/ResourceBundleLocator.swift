@@ -58,7 +58,14 @@ enum ResourceBundleLocator {
         return urls
     }
 
-    private static func isLikelyResourceBundle(_ bundle: Bundle) -> Bool {
+    /// Internal rather than private so a test can exercise it directly.
+    ///
+    /// Testing through `resolve()` does not guard this: when the probe
+    /// is wrong, `resolve()` falls through to `firstCandidateBundle`,
+    /// which in the SwiftPM test layout happens to be the right bundle
+    /// anyway. The probe can be completely broken and every test still
+    /// passes — which is what happened when the corpus was renamed.
+    static func isLikelyResourceBundle(_ bundle: Bundle) -> Bool {
         if bundle.url(forResource: quoteProbePrefix, withExtension: "json") != nil {
             return true
         }

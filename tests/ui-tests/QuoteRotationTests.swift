@@ -69,3 +69,57 @@ final class QuoteRotationTests: XCTestCase {
         XCTAssertFalse(quote.quoteText.isEmpty)
     }
 }
+
+/// Guards the bundle probe and the shipped corpus.
+final class QuoteCorpusTests: XCTestCase {
+    private func pool() -> [Quote] {
+        let service = QuoteService(
+            repository: QuoteRepository(bundle: ResourceBundleLocator.resolve())
+        )
+        _ = service.loadDailyQuote(dayNumber: 739_851)
+        return service.activeQuotes
+    }
+
+    func testProbeRecognisesTheRealResourceBundle() {
+        // Direct, not via resolve(): resolve() masks a broken probe by
+        // falling through to a candidate that is right by accident.
+        XCTAssertTrue(
+            ResourceBundleLocator.isLikelyResourceBundle(ResourceBundleLocator.resolve()),
+            "the probe no longer recognises the bundle holding quotes.json"
+        )
+    }
+
+    func testProbeRejectsABundleWithNoQuotes() {
+        XCTAssertFalse(
+            ResourceBundleLocator.isLikelyResourceBundle(Bundle(for: QuoteCorpusTests.self)),
+            "the probe accepts a bundle with no corpus, so it proves nothing"
+        )
+    }
+
+    func testEveryShippedQuoteCarriesAnId() {
+        let quotes = pool()
+        XCTAssertFalse(quotes.isEmpty)
+        XCTAssertTrue(
+            quotes.allSatisfy { $0.id != nil },
+            "a quote without an id makes pool order, and the daily selection, diverge from wiserone.com"
+        )
+    }
+
+    func testIdsAreContiguousFromZero() {
+        let ids = pool().compactMap(\.id).sorted()
+        XCTAssertEqual(ids, Array(0..<ids.count),
+                       "ids must be contiguous; a gap shifts every day's quote")
+    }
+
+    func testCorpusIsDeepEnoughToHideTheRotation() {
+        XCTAssertGreaterThanOrEqual(
+            pool().count, 100,
+            "below ~100 quotes a returning reader notices the repeat"
+        )
+    }
+
+    func testNoDuplicateQuotesInThePool() {
+        let texts = pool().map(\.quoteText)
+        XCTAssertEqual(Set(texts).count, texts.count, "duplicate quote in the pool")
+    }
+}

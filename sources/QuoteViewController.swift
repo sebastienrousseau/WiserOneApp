@@ -19,6 +19,7 @@
 
 #if canImport(Cocoa)
 import Cocoa
+import WiserOneCore
 
 // MARK: - QuoteViewController
 
@@ -130,6 +131,11 @@ class QuoteViewController: NSViewController {
         button.translatesAutoresizingMaskIntoConstraints = false
         button.target = self
         button.action = #selector(buttonClicked)
+        // The button is an image with no title, so VoiceOver had nothing
+        // to announce and no way to say what activating it does.
+        button.setAccessibilityLabel("The Wiser One")
+        button.setAccessibilityHelp("Opens wiserone.com in your browser")
+        button.setAccessibilityRole(.button)
         view.addSubview(button)
 
         logoWidthConstraint = button.widthAnchor.constraint(equalToConstant: logoSize)
@@ -242,9 +248,7 @@ class QuoteViewController: NSViewController {
     /// app and the site show the same quote on the same day, given the
     /// same pool in the same order.
     private func currentDayNumber() -> Int {
-        let secondsPerDay = 86_400.0
-        let daysSinceEpoch = Int(floor(Date().timeIntervalSince1970 / secondsPerDay))
-        return 719_163 + daysSinceEpoch
+        QuoteRotation.dayNumber()
     }
 
     /// Retrieves and stores the current daily quote from discovered resources.
@@ -330,9 +334,36 @@ class QuoteViewController: NSViewController {
             authorTextField.alphaValue = 1
         }
 
+        announceForAccessibility(quote)
+
         assert(!quoteTextView.string.isEmpty, "Quote text should not render as an empty string.")
         assert(!authorTextField.stringValue.isEmpty, "Quote author should not render as an empty string.")
         enforceFixedPopoverSize()
+    }
+
+    /// Exposes the quote to VoiceOver as one utterance.
+    ///
+    /// The quote and its attribution live in two sibling views, so a
+    /// screen reader announced them as unrelated fragments — and the
+    /// scroll view around the text reported itself as an empty group.
+    /// This gives the pair a single label, and announces it when the
+    /// quote changes so a reader who never moves focus still hears it.
+    private func announceForAccessibility(_ quote: Quote) {
+        let spoken = "\(quote.quoteText) — \(quote.author)"
+
+        quoteScrollView.setAccessibilityElement(true)
+        quoteScrollView.setAccessibilityRole(.staticText)
+        quoteScrollView.setAccessibilityLabel("Quote of the day")
+        quoteScrollView.setAccessibilityValue(spoken)
+
+        quoteTextView.setAccessibilityLabel(spoken)
+        authorTextField.setAccessibilityLabel("Attributed to \(quote.author)")
+        view.setAccessibilityLabel(spoken)
+
+        NSAccessibility.post(
+            element: quoteScrollView,
+            notification: .valueChanged
+        )
     }
 
     /// Applies quote text with centered paragraph style and resets scroll position.
