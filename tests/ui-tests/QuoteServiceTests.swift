@@ -116,27 +116,61 @@ final class QuoteServiceTests: XCTestCase {
         XCTAssertEqual(ids, ids.sorted(), "pool is not in id order")
     }
 
-    /// The merged cache is global, not per-bundle.
+    /// The cache is partitioned by bundle.
     ///
-    /// `loadDiscoveredQuotes` consults `QuoteCache.shared` before it
-    /// looks at its own bundle, so once any repository has loaded, a
-    /// repository built on a *different* bundle returns that same
-    /// corpus rather than throwing. Benign in production, where there
-    /// is exactly one bundle, but it means this cannot be used to
-    /// isolate bundles in a test — and a future multi-source feature
-    /// would need the cache keyed by bundle identifier.
-    func testMergedCacheIsSharedAcrossBundles() throws {
-        _ = try QuoteRepository(bundle: ResourceBundleLocator.resolve())
-            .loadDiscoveredQuotes()
+    /// It used to be keyed by resource name alone with one merged
+    /// corpus per process, so a repository built on one bundle was
+    /// handed whatever a different bundle had loaded first. Loading the
+    /// real bundle must not satisfy a load from an unrelated one.
+    func testCacheDoesNotLeakAcrossBundles() throws {
+        let real = QuoteRepository(bundle: ResourceBundleLocator.resolve())
+        _ = try real.loadDiscoveredQuotes()
 
-        let unrelated = Bundle(for: QuoteServiceTests.self)
-        let (quotes, _) = try QuoteRepository(bundle: unrelated)
-            .loadDiscoveredQuotes()
-
-        XCTAssertFalse(
-            quotes.isEmpty,
-            "the global cache should have satisfied this load"
+        let unrelated = QuoteRepository(bundle: Bundle(for: QuoteServiceTests.self))
+        XCTAssertNotEqual(
+            real.cacheScope, unrelated.cacheScope,
+            "two bundles must occupy different cache partitions"
         )
+        XCTAssertThrowsError(
+            try unrelated.loadDiscoveredQuotes(),
+            "a bundle with no quotes must not be served another's corpus"
+        ) { error in
+            XCTAssertTrue(error is QuoteLoadError)
+        }
+    }
+
+    func testCachePartitionsAreIndependentlyClearable() throws {
+        let repo = QuoteRepository(bundle: ResourceBundleLocator.resolve())
+        let (before, sources) = try repo.loadDiscoveredQuotes()
+        XCTAssertFalse(before.isEmpty)
+
+        QuoteCache.shared.removeAll(in: repo.cacheScope)
+        XCTAssertNil(QuoteCache.shared.cachedMergedQuotes(in: repo.cacheScope))
+
+        // Clearing must not lose the corpus — the next load re-reads it.
+        let (after, sourcesAgain) = try repo.loadDiscoveredQuotes()
+        XCTAssertEqual(before.count, after.count)
+        XCTAssertEqual(sources, sourcesAgain)
+    }
+
+    func testCacheStoresAndReturnsPerResource() {
+        let scope = "test-scope-\(UUID().uuidString)"
+        let quote = Quote(
+            id: 0, quoteText: "A line.", author: "A",
+            dateAdded: "2026-08-23T06:06:06Z",
+            imageUrl: "https://e.com/a.jpg"
+        )
+        XCTAssertNil(QuoteCache.shared.cachedQuotes(for: "x", in: scope))
+        QuoteCache.shared.storeQuotes([quote], for: "x", in: scope)
+        XCTAssertEqual(QuoteCache.shared.cachedQuotes(for: "x", in: scope)?.count, 1)
+        XCTAssertNil(QuoteCache.shared.cachedQuotes(for: "x", in: "other-\(scope)"))
+
+        QuoteCache.shared.storeMergedQuotes([quote], sourceCount: 1, in: scope)
+        XCTAssertEqual(QuoteCache.shared.cachedMergedQuotes(in: scope)?.1, 1)
+
+        QuoteCache.shared.removeAll(in: scope)
+        XCTAssertNil(QuoteCache.shared.cachedQuotes(for: "x", in: scope))
+        XCTAssertNil(QuoteCache.shared.cachedMergedQuotes(in: scope))
     }
 
     func testFallbackQuoteIsSelfDescribing() {

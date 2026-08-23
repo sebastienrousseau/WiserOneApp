@@ -14,6 +14,13 @@ clean:
 test:
 	./scripts/quality/test-with-coverage.sh 100
 
+# Coverage over the whole app, split by testability. The core-only gate
+# above reports 100% while measuring seven lines; this one measures all
+# of sources/. macOS only: AppDelegate and QuoteViewController are
+# behind `#if canImport(Cocoa)` and compile to nothing on Linux.
+test-coverage-scopes:
+	./scripts/quality/check-coverage-scopes.sh
+
 test-all: test test-ui
 
 test-unit:

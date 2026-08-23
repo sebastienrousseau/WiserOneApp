@@ -79,10 +79,29 @@ final class AppDelegateTests: XCTestCase {
         launch()
         let button = try XCTUnwrap(delegate.statusBarItem?.button)
 
-        // A headless test session has no active UI, so `popover.show`
-        // runs but the popover never becomes visible. The assertion is
-        // therefore that the toggle path executes and leaves the
-        // popover coherent, not that it appears on screen.
+        // `popover.show(relativeTo:of:...)` needs its anchor view to be
+        // in a window. The status bar button is not reliably hosted in
+        // a headless session, so this anchors the popover to a real
+        // window of its own — which makes the assertion meaningful
+        // instead of merely "the call did not crash".
+        let host = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 200),
+            styleMask: [.titled], backing: .buffered, defer: false
+        )
+        let anchor = NSView(frame: NSRect(x: 0, y: 0, width: 40, height: 40))
+        host.contentView?.addSubview(anchor)
+        host.orderFront(nil)
+        defer { host.orderOut(nil) }
+
+        delegate.popover.show(
+            relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY
+        )
+        XCTAssertTrue(delegate.popover.isShown, "popover did not present")
+
+        delegate.popover.performClose(nil)
+
+        // Drive the delegate's own toggle too, so the branch that picks
+        // between showing and closing is exercised.
         _ = button.target?.perform(button.action, with: button)
         _ = button.target?.perform(button.action, with: button)
 

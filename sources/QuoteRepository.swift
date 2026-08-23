@@ -20,13 +20,22 @@ final class QuoteRepository {
     private let resourceBundle: Bundle
     private let cache: QuoteCache
 
+    /// Cache partition for this repository's bundle.
+    ///
+    /// The identifier is absent for a plain resource bundle, so the
+    /// path is the fallback — it is stable for the lifetime of the
+    /// process and unique per bundle, which is all the key needs to be.
+    var cacheScope: String {
+        resourceBundle.bundleIdentifier ?? resourceBundle.bundleURL.path
+    }
+
     init(bundle: Bundle, cache: QuoteCache = .shared) {
         resourceBundle = bundle
         self.cache = cache
     }
 
     func loadDiscoveredQuotes() throws -> ([Quote], Int) {
-        if let cached = cache.cachedMergedQuotes() {
+        if let cached = cache.cachedMergedQuotes(in: cacheScope) {
             return cached
         }
 
@@ -79,7 +88,9 @@ final class QuoteRepository {
             let right = rhs.id ?? Int.max
             return left == right ? lhs.dateAdded < rhs.dateAdded : left < right
         }
-        cache.storeMergedQuotes(sortedQuotes, sourceCount: validSourceCount)
+        cache.storeMergedQuotes(
+            sortedQuotes, sourceCount: validSourceCount, in: cacheScope
+        )
         return (sortedQuotes, validSourceCount)
     }
 
@@ -161,7 +172,7 @@ final class QuoteRepository {
         assert(!resourceName.isEmpty, "Resource name must not be empty.")
         assert(resourceName.count <= Self.maxResourceNameLength, "Resource name exceeds safe bound.")
 
-        if let cached = cache.cachedQuotes(for: resourceName) {
+        if let cached = cache.cachedQuotes(for: resourceName, in: cacheScope) {
             return cached
         }
 
@@ -176,7 +187,7 @@ final class QuoteRepository {
             throw QuoteLoadError.resourceTooLarge(resourceName)
         }
 
-        cache.storeQuotes(decoded.quotes, for: resourceName)
+        cache.storeQuotes(decoded.quotes, for: resourceName, in: cacheScope)
         return decoded.quotes
     }
 }
