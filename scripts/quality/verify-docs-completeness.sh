@@ -9,7 +9,7 @@ failed=0
 required_readmes="
 README.md
 CONTRIBUTING.md
-docs/README.md
+doc/README.md
 scripts/README.md
 tests/README.md
 governance/checksums/README.md
@@ -26,12 +26,12 @@ for file in $required_readmes; do
     fi
 done
 
-# Ensure docs index references every markdown file in docs/ except itself.
-for doc_path in docs/*.md; do
-    [ "$doc_path" = "docs/README.md" ] && continue
+# Ensure docs index references every markdown file in doc/ except itself.
+for doc_path in doc/*.md; do
+    [ "$doc_path" = "doc/README.md" ] && continue
     doc_name="$(basename "$doc_path")"
-    if ! grep -q "${doc_name}" docs/README.md; then
-        echo "Documentation completeness failed: docs/README.md does not reference ${doc_name}" >&2
+    if ! grep -q "${doc_name}" doc/README.md; then
+        echo "Documentation completeness failed: doc/README.md does not reference ${doc_name}" >&2
         failed=1
     fi
 done

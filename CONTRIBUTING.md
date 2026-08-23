@@ -42,7 +42,7 @@ CI validates commit signatures on every pull request.
 Use focused branches:
 - `feat/<name>`
 - `fix/<name>`
-- `docs/<name>`
+- `doc/<name>`
 
 Open pull requests with:
 - clear title
