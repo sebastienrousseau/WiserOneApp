@@ -1,3 +1,4 @@
+#if canImport(Cocoa)
 import XCTest
 @testable import WiserOne
 
@@ -422,3 +423,4 @@ final class QuoteRepositoryBoundsTests: XCTestCase {
         )
     }
 }
+#endif

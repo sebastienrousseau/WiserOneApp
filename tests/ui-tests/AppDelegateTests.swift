@@ -1,3 +1,4 @@
+#if canImport(Cocoa)
 import XCTest
 @testable import WiserOne
 
@@ -136,3 +137,4 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertTrue(item.target === delegate)
     }
 }
+#endif

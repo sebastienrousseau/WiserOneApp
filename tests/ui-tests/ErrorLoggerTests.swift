@@ -1,3 +1,4 @@
+#if canImport(Cocoa)
 import XCTest
 @testable import WiserOne
 
@@ -107,3 +108,4 @@ final class ErrorLoggerTests: XCTestCase {
         XCTAssertTrue(ErrorLogger.shared === ErrorLogger.shared)
     }
 }
+#endif

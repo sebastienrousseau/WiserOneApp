@@ -1,3 +1,4 @@
+#if canImport(Cocoa)
 import XCTest
 @testable import WiserOne
 
@@ -179,3 +180,4 @@ final class QuoteServiceTests: XCTestCase {
         XCTAssertNil(Quote.fallback.id)
     }
 }
+#endif

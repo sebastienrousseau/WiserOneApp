@@ -1,3 +1,4 @@
+#if canImport(Cocoa)
 import XCTest
 @testable import WiserOne
 
@@ -123,3 +124,4 @@ final class QuoteCorpusTests: XCTestCase {
         XCTAssertEqual(Set(texts).count, texts.count, "duplicate quote in the pool")
     }
 }
+#endif
