@@ -2,4 +2,4 @@
 # Regenerate with: ./scripts/security/update-artifact-checksums.sh
 3e21e5629d2fd4bb58ecb94dd001a38457f7f18896a8a6878ba74b86b22f725f  sources/resources/logo-menubar.svg
 b2006cda0adac0bf108095bdeef6f97b2180b6703a21450d39f16ce864e4b17c  sources/resources/logo.svg
-7e9f9d1d7c6fee9c5c085fd2d952d4b7ba4d80d60f8e344a9085abba08b467c4  sources/resources/quotes.json
+949729ad10f7dbd63b810bb178fdc66619b14f2ccbdba648fd78369ba98f795f  sources/resources/quotes.json

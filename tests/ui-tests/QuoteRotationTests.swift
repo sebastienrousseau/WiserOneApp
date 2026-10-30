@@ -14,7 +14,7 @@ final class QuoteRotationTests: XCTestCase {
     /// 2026-08-23 as `date.toordinal()`, the ordinal the website uses.
     private let knownDayNumber = 739_851
     private let expectedForKnownDay =
-        "If nobody's upset about what you cut, you didn't cut enough."
+        "Tomorrow holds beautiful surprises, but don't miss the wonder that is already here tonight."
 
     private func makeService() -> QuoteService {
         QuoteService(repository: QuoteRepository(bundle: ResourceBundleLocator.resolve()))
