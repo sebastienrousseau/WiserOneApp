@@ -2,10 +2,10 @@
   "recordVersion": 1,
   "project": "WiserOne",
   "commit": {
-    "sha": "76cd1e0e1f91757f9dc7fa53fb3122763d0c75aa",
-    "shortSha": "76cd1e0",
-    "branch": "feat/v0.0.3",
-    "committedAt": "2026-04-11T13:56:16+01:00"
+    "sha": "1b663ef76c6b8923a82312fe33ecdb617ebc45e9",
+    "shortSha": "1b663ef",
+    "branch": "feat/v0.0.4",
+    "committedAt": "2026-08-23T18:43:59+01:00"
   },
   "controls": {
     "signedCommits": "pass",
@@ -21,11 +21,11 @@
   "artifacts": {
     "sbom": {
       "path": "governance/sbom/cyclonedx-sbom.json",
-      "sha256": "117b69831ed838a9ab9657e8003bc4c08159de045a0a74da37e2d67e7ed4e43b"
+      "sha256": "0bc70ee8740b226fbf2f539a93acac442bc985f2b5b28d63fae5e1679a648744"
     },
     "resourceChecksumManifest": {
       "path": "governance/checksums/sha256sums.txt",
-      "sha256": "dc98502ba78cd9be38f5fd2fced5ee6a6b79d55171cb90943e6fe5fe90d053dc"
+      "sha256": "cc2562a92e7c08b7a0271294e10990fffa39226e6f7daa91ffc9c7aed9df413e"
     }
   },
   "procedure": "governance/compliance/software-validation-procedure.md"
